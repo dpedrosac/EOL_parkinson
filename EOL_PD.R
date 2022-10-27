@@ -1,41 +1,34 @@
 # This is code to run analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
-# Version 1.2 # 2022-06-16, added further analyses
+# Version 1.1 # 2022-10-28, first commit
 
 ## First specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx",
              "psych", "DescTools", "jtools", "rstatix", "ggpubr")
+source("load_packages.r") 														# all defines packages are loaded with this helper file
 
 ## In case of multiple people working on one project, this helps to create an automatic script
 username = Sys.info()["login"]
 
 if (username == "dpedr") {
-  wdir = "D:/anna_projects"
+	wdir 		<- "D:/EOL_parkinson/"
+	data_dir 	<-file.path(wdir, 'data') 
 } else if (username == "david") {
-  wdir = "/media/storage/anna_projects/"
+	wdir = "/media/storage/EOL_parkinson/"
+	data_dir 	<-file.path(wdir, 'data') 
 } else {
-  wdir = "/Users/annapedrosa/Documents/dokumente/Arbeit_Anna/Aktuelle Projekte/StudiePoD_PD/" # <- wenn ich nicht dran arbeite, arbeitest Du dran und dann ist das der Ordner, in dem er sucht
+	wdir = getwd() # <- am besten DU speicherst die Datei hier neben der Matrix_EOL_PD_.xlsx, dann hast Du auch nicht so lange Dateinamen
+	data_dir 	<-file.path(wdir) 
 }
 setwd(wdir)
 
-## Now load or install & load all iff necessary
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
-
 # ==================================================================================================
 # Read data from excel spreadsheet
-eol_xls <- read_excel(file.path(wdir, "Matrix_EOL_PD_.xlsx"))
+eol_xls <- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
+
 
 # ==================================================================================================
-
 # Recode variables
 
 eol_xls <- eol_xls %>%
