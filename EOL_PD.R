@@ -6,7 +6,7 @@
 ## First specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx",
              "psych", "DescTools", "jtools", "rstatix", "ggpubr")
-source("load_packages.r") 														# all defines packages are loaded with this helper file
+source("load_packages.r") 														# all defined [packages] are loaded with this helper file
 
 ## In case of multiple people working on one project, this helps to create an automatic script
 username = Sys.info()["login"]
@@ -25,163 +25,43 @@ setwd(wdir)
 
 # ==================================================================================================
 # Read data from excel spreadsheet
-eol_xls <- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
+eol_dataframe <- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
 
+# Read and convert coding/explanations
+dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations") # Read the worksheet called "explanations" from the "matrix.xlsx" file
+dataframe_codes_clean <- dataframe_codes %>%
+  drop_na(starts_with("0")) %>% 	# Remove rows with NAs in columns 3 and beyond
+  select(-Unit)  # Drop the "Unit" column
 
 # ==================================================================================================
 # Recode variables
-
-eol_xls <- eol_xls %>%
-  mutate(
-    homedeath = fct_collapse(
-      as.factor(prefered_place_of_death),
-      "no" = c("1", "2", "3", "4", "5", "7"),
-      "yes" = c("0"),
-      "not important" = c("7")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    homecare = fct_collapse(
-      as.factor(prefered_place_of_care),
-      "no" = c("1", "2", "3", "4", "5", "7"),
-      "yes" = c("0"),
-      "not important" = c("7")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    married = fct_collapse(
-      as.factor(marital_status),
-      "no" = c("0", "3", "4", "5"),
-      "yes" = c("1", "2")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    German = fct_collapse(
-      as.factor(nationality),
-      "no" = c("1", "2", "3", "4","5", "6", "7", "8", "9", "10", "11" ),
-      "yes" = c("0")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    Religious_affiliation = fct_collapse(
-      as.factor(religion_belief_worldview),
-      "no" = c( "8"),
-      "yes" = c("0", "1", "2", "3", "4","5", "6", "7")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    independent_living = fct_collapse(
-      as.factor(LivingSituation),
-      "no" = c("1", "2", "3", "4"),
-      "yes" = c("0")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    nursingcare = fct_collapse(
-      as.factor(Nursing_support),
-      "no" = c("0"), 
-      "informal" = c("1"),
-      "formal"= c("2", "3", "4")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    rurality = fct_collapse(
-      as.factor(Residential_location),
-      "no" = c("0", "1","2","3"),
-      "yes" = c("4")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    ProfessionalEducation = fct_collapse(
-      as.factor(Professional_education),
-      "none" = c("0"),
-      "Ausbildung" = c("1"),
-      "university degree" = c("2", "3"),
-      "other" = c("4")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    AdvanceDirective = fct_collapse(
-      as.factor(Advance_directive),
-      "no" = c("0"),
-      "yes" = c("1"),
-      "maybe" = c("2")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    PowerOfAttorney = fct_collapse(
-      as.factor(Power_of_attorney),
-      "no" = c("0"),
-      "yes" = c("1"),
-      "maybe" = c("2")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    knowledge_PC = fct_collapse(
-      as.factor(palliative_care-knowledge),
-      "no" = c("0"),
-      "yes" = c("1")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    knowledge_hospice = fct_collapse(
-      as.factor(hospice_knowledge),
-      "no" = c("0"),
-      "yes" = c("1")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    familyfriends_POD = fct_collapse(
-      as.factor(POD_familiy_friends),
-      "yes" = c("1"),
-      "no" = c("0"),
-      "maybe" = c("2"))) 
-
-eol_xls <- eol_xls %>%
-  mutate(
-    GP_POD = fct_collapse(
-      as.factor(POD_GP),
-      "yes" = c("1"),
-      "no" = c("0"),
-      "maybe" = c("2"))) 
-
-eol_xls <- eol_xls %>%
-  mutate(
-    Neurologist_POD = fct_collapse(
-      as.factor(POD_neurologist),
-      "yes" = c("1"),
-      "no" = c("0"),
-      "maybe" = c("2")))
-
-eol_xls <- eol_xls %>%
-  mutate(
-    AD_POD = fct_collapse(
-      as.factor(POD_AD),
-      "yes" = c("1"),
-      "no" = c("0"),
-      "maybe" = c("2")))
+source("recode_dataframe.r")  														# data is recoded and structured according to labels
 
 
+# ==================================================================================================
+# Recode variables # TODO: this should be moved to different function/file!
+source("summarise_questionnaires.r")  														# questionnaires (UPDRS, PDQ, MoCA)
 
-allVars <- c("gender", "age", "age_at_diagnosis", "duration", "nationality", "marital_status",
-            "Religious_affiliation", "Housing_situation", "Cohabitation", "Nursing_support", "Residential_location",
-            "School_graduation", "Professional_education", "Advance_directive", "Power_of_attorney", "other_document",
-            "palliative_care_knowledge", "hospice_knowledge", "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts",
-            "Thoughts_dicussed_with", "asked_about_end_of_life_wishes", "asked_by_whom", "prefered_place_of_care",
-            "prefered_place_of_death", "POD_familiy_friends", "POD_GP", "POD_neurologist", "POD_AD", "LEDD", "Hoehn_Yahr",
+
+allVars <- c("gender", "age", "age_at_diagnosis", "duration", "marital_status", "cat.education",
+            "Religious_affiliation", "cat.independent_living", "Cohabitation", "cat.nursing_support", "cat.residential_location",
+            "cat.education", "cat.advance_directive", "cat.power_attorney",
+            "cat.palliative_care_knowledge", "cat.hospice_knowledge", "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts",
+            "Thoughts_dicussed_with", "asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care",
+            "cat.prefered_place_of_death", "cat.pod_family_friends", "cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "LEDD", "Hoehn_Yahr",
             "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "Charlson_withoutage", "Charlson_withage", "dbs")
 
-catVars <- c("gender", "nationality", "marital_status", "religion_belief_worldview", "Housing_situation", "Cohabitation",
-             "Nursing_support", "Residential_location", "School_graduation", "Professional_education", "Advance_directive",
-             "Power_of_attorney", "other_document", "palliative_care_knowledge", "hospice_knowledge",
+catVars <- c("gender", "german", "cat.marital_status", "religion_belief_worldview", "cat.independent_living",
+             "cat.nursing_support", "cat.residential_location", "cat.education", "cat.advance_directive",
+             "cat.power_attorney", "cat.palliative_care_knowledge", "cat.hospice_knowledge",
              "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts", "Thoughts_dicussed_with", "asked_about_end_of_life_wishes",
-             "asked_by_whom", "prefered_place_of_care", "prefered_place_of_death", "POD_familiy_friends", "POD_GP",
-             "POD_neurologist", "POD_AD", "Hoehn_Yahr", "dbs")
+             "asked_by_whom", "cat.prefered_place_of_care", "cat.prefered_place_of_death",
+             "cat.pod_family_friends", "cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "Hoehn_Yahr", "dbs")
 
 NumVars <- c("age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_sum", "bdi_score", "MOCA_score", "Charlson_withoutage",
-             "Charlson_withage")
+             "Charlson_withage", "Cohabitation")
 
-tab2 <- CreateTableOne(vars = allVars, data = eol_xls, factorVars = catVars)
+tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) # Cohabitation with values of 15 and 30, 
 print(tab2)
 write.csv(print(tab2, quote = FALSE, 
                 noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = "TableOne_EOL.csv")
