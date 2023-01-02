@@ -6,9 +6,9 @@
 ## First specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx",
              "psych", "DescTools", "jtools", "rstatix", "ggpubr")
-source("load_packages.r") 														# all defined [packages] are loaded with this helper file
+source("load_packages.r") 							# all defined [packages] are loaded with this helper file
 
-## In case of multiple people working on one project, this helps to create an automatic script
+## In case of multiple people working on one project, this creates automatic script
 username = Sys.info()["login"]
 
 if (username == "dpedr") {
@@ -27,20 +27,20 @@ setwd(wdir)
 # Read data from excel spreadsheet
 eol_dataframe <- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
 
-# Read and convert coding/explanations
-dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations") # Read the worksheet called "explanations" from the "matrix.xlsx" file
+# Read and convert coding/explanations from xlsx-file
+dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations")
 dataframe_codes_clean <- dataframe_codes %>%
-  drop_na(starts_with("0")) %>% 	# Remove rows with NAs in columns 3 and beyond
-  select(-Unit)  # Drop the "Unit" column
+  drop_na(starts_with("0")) %>% 						# Remove rows with NAs in columns 3 and beyond
+  select(-Unit)  								# Drop the "Unit" column
 
 # ==================================================================================================
 # Recode variables
-source("recode_dataframe.r")  														# data is recoded and structured according to labels
+source("recode_dataframe.r")  							# data is recoded and structured according to labels
 
 
 # ==================================================================================================
 # Recode variables # TODO: this should be moved to different function/file!
-source("summarise_questionnaires.r")  														# questionnaires (UPDRS, PDQ, MoCA)
+source("summarise_questionnaires.r")  						# questionnaires (UPDRS, PDQ, MoCA)
 
 
 allVars <- c("gender", "age", "age_at_diagnosis", "duration", "marital_status", "cat.education",
