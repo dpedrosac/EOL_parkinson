@@ -67,31 +67,32 @@ write.csv(print(tab2, quote = FALSE,
                 noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = "TableOne_EOL.csv")
 
 # Run regression analyses
-colnames(eol_xls) # list of column names which may be used to define the factors of interest
+colnames(eol_dataframe) # list of column names which may be used to define the factors of interest
 
-factorsOR1 = c("gender", "age", "age_at_diagnosis", "duration", "German", "married",
-               "religious", "independent_living", "Cohabitation", "nursingcare", "rurality",
-                "ProfessionalEducation", "AdvanceDirective", "Power_of_attorney",
-               "knowledge_PC", "knowlege_hospice", "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts",
-               "Thoughts_dicussed_with", "asked_about_end_of_life_wishes", "asked_by_whom", "homecare",
-              "LEDD", "Hoehn_Yahr", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "Charlson_withoutage", "Charlson_withage", "dbs")
+factorsOR1 = c("gender", "age", "age_at_diagnosis", "duration", "german", "married", "religious_affiliation", "independent_living",
+             "receiving_nursing_support", "residential_location", "professional_education", "existence_advance_directive",
+             "attorney_power", "palliative_care_knowledge", "hospice_knowledge",
+             "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts", "Thoughts_dicussed_with", "asked_about_end_of_life_wishes",
+             "asked_by_whom", "cat.prefered_place_of_care", "home_care",
+             "pod.family_friends", "pod.GP", "pod.neurologist", "pod.AD", "Hoehn_Yahr", "dbs")
 
 results_homedeath = c()
 for (fac in factorsOR1) { # for loop over factors of interest
-  mod <- as.formula(sprintf("I(homedeath=='yes') ~ %s", fac)) # formula for (unadjusted) GLM
-  fit_temp = glm(mod, data=data_xls, family="binomial") # estimate model
+  mod <- as.formula(sprintf("I(home_death=='yes') ~ %s", fac)) # formula for (unadjusted) GLM
+  fit_temp = glm(mod, data=eol_dataframe, family="binomial") # estimate model
   results_homedeath = rbind(	results_homedeath, c(exp(coef(fit_temp)[2]), 	# OR
                                                   exp(confint.default(fit_temp)[2]),  	# lower CI
                                                   exp(confint.default(fit_temp)[4]),  	# upper CI
                                                   summary(fit_temp)$coefficients[2,4])) 	# significance value
-  
+	}
+
   results_OR1 <- data.frame(yAxis = length(factorsOR1):1, 
                             factors=factorsOR1,
                             # factors_group=group,
-                            boxOdds = results_interest1[,1], 
-                            boxCILow = results_interest1[,2],
-                            boxCIHigh = results_interest1[,3],
-                            pvalue=results_interest1[,4])
+                            boxOdds = results_homedeath[,1], 
+                            boxCILow = results_homedeath[,2],
+                            boxCIHigh = results_homedeath[,3],
+                            pvalue=results_homedeath[,4])
   results_OR1 <- results_OR1 %>% mutate(significance = case_when(pvalue <= .001 ~ 'p < .001', 
                                                                  (pvalue < .05 & pvalue >.001) ~ 'p < .05',
                                                                  pvalue > .05 ~ 'ns')) %>% 
@@ -126,7 +127,7 @@ results_OR1 %>%
         axis.text = element_text(size = 12),
         plot.caption = element_text(hjust = 0, face="italic")) +
   coord_capped_cart(bottom='right') +
-  scale_x_log10(breaks = c(.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10), limits=c(.01, 10), expand=c(0.2, 0)) + 
+  scale_x_log10(breaks = c(.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10, 20, 50, 100), limits=c(.01, 100), expand=c(0.2, 0)) + 
   #geom_hline(yintercept=hlines[1:length(hlines)-1], linetype="dotted", size = .01) +
   geom_text(
     aes(x = 20, y = factors, label = label), # aes(x = start, y = 2500, label = name)
@@ -139,5 +140,5 @@ results_OR1 %>%
   xlab("Odds ratio (log scale)") + 
   # ggtitle("iPS-patients' odds of preferred home death") + 
   labs(title = "Patients' odds of preferred home death",
-       caption = sprintf("(n = %s patients)", dim(data_xls)[1]))
+       caption = sprintf("(n = %s patients)", dim(eol_dataframe)[1]))
 #sprintf("%.2f - [%.2f ; %.2f]", results_OR1$boxOdds[1], results_OR1$boxCILow[1], results_OR1$boxCILow[1])

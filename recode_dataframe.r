@@ -181,7 +181,7 @@ factor.residential_location <- dataframe_codes %>%
 # Mutate the values in the "Residential_location" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.residential_location = factor(Residential_location, levels = as.factor(factor.residential_location$row_number)))  %>%
-  mutate(rurality = ifelse(Residential_location == "3", "yes", "no"))
+  mutate(residential_location = ifelse(Residential_location == "3", "yes", "no"))
 levels(eol_dataframe$cat.residential_location) = as.factor(factor.residential_location$.)
 
 # ========================================================================================================================= #
@@ -307,7 +307,7 @@ factor.pod_family_friends <- dataframe_codes %>%
 # Mutate the values in the "POD_familiy_friends" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_family_friends = factor(POD_familiy_friends, levels = as.factor(factor.pod_family_friends$row_number))) %>%
-  mutate(pod.familiy_friends = fct_collapse(as.factor(cat.pod_family_friends),"no" = c("0"), 
+  mutate(pod.family_friends = fct_collapse(as.factor(cat.pod_family_friends),"no" = c("0"), 
 											   										"yes" = c("1"),
       																				"maybe" = c("2")))
 levels(eol_dataframe$cat.pod_family_friends) = as.factor(factor.pod_family_friends$.)
