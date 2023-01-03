@@ -11,7 +11,7 @@
 # 5. Marital status 
 # 6. Housing situation 
 # 7. Education
-# 8. Residential location #QUERY: There are some subjects coded as "4" which doesn't appear in the codes!
+# 8. Residential location #TODO ANNA: There are some subjects coded as "4" which doesn't appear in the codes!
 # 9. Knowledge about palliative care
 # 10. Knowledge about hospice
 # 11. Power of attorney
@@ -286,8 +286,8 @@ factor.nursing_support <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.nursing_support = factor(Nursing_support, levels = as.factor(factor.nursing_support$row_number))) %>%
   mutate(receiving_nursing_support = fct_collapse(as.factor(cat.nursing_support),"no" = c("0"), 
-											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+											   										"informal" = c("1"),
+      																				"formal" = c("2", "3", "4")))
 levels(eol_dataframe$cat.nursing_support) = as.factor(factor.nursing_support$.)
 
 # ========================================================================================================================= #

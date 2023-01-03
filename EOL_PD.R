@@ -18,7 +18,7 @@ if (username == "dpedr") {
 	wdir = "/media/storage/EOL_parkinson/"
 	data_dir 	<-file.path(wdir, 'data') 
 } else {
-	wdir = getwd() # <- am besten DU speicherst die Datei hier neben der Matrix_EOL_PD_.xlsx, dann hast Du auch nicht so lange Dateinamen
+	wdir = getwd()
 	data_dir 	<-file.path(wdir) 
 }
 setwd(wdir)
@@ -30,17 +30,16 @@ eol_dataframe <- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
 # Read and convert coding/explanations from xlsx-file
 dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations")
 dataframe_codes_clean <- dataframe_codes %>%
-  drop_na(starts_with("0")) %>% 						# Remove rows with NAs in columns 3 and beyond
+  drop_na(starts_with("0")) %>% 				# Remove rows with NAs in columns 3 and beyond
   select(-Unit)  								# Drop the "Unit" column
 
 # ==================================================================================================
 # Recode variables
-source("recode_dataframe.r")  							# data is recoded and structured according to labels
-
+source("recode_dataframe.r")  					# data is recoded and structured according to labels
 
 # ==================================================================================================
-# Recode variables # TODO: this should be moved to different function/file!
-source("summarise_questionnaires.r")  						# questionnaires (UPDRS, PDQ, MoCA)
+# Recode variables
+source("summarise_questionnaires.r")  			# questionnaires (UPDRS, PDQ, MoCA) # TODO DAVID: mistake with updrs_total,  
 
 
 allVars <- c("gender", "age", "age_at_diagnosis", "duration", "marital_status", "cat.education",
@@ -61,7 +60,7 @@ catVars <- c("gender", "german", "cat.marital_status", "religion_belief_worldvie
 NumVars <- c("age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_sum", "bdi_score", "MOCA_score", "Charlson_withoutage",
              "Charlson_withage", "Cohabitation")
 
-tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) # Cohabitation with values of 15 and 30, 
+tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) 
 print(tab2)
 write.csv(print(tab2, quote = FALSE, 
                 noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = "TableOne_EOL.csv")
@@ -69,11 +68,12 @@ write.csv(print(tab2, quote = FALSE,
 # Run regression analyses
 colnames(eol_dataframe) # list of column names which may be used to define the factors of interest
 
+# TODO ANNA: Check factorsOR1, find formula for PDQ39 estimation, Cohabitation with values of 15 and 30,
 factorsOR1 = c("gender", "age", "age_at_diagnosis", "duration", "german", "married", "religious_affiliation", "independent_living",
              "receiving_nursing_support", "residential_location", "professional_education", "existence_advance_directive",
              "attorney_power", "palliative_care_knowledge", "hospice_knowledge",
              "thoughts_about_end_of_life_wishes", "Sharing_of_thoughts", "Thoughts_dicussed_with", "asked_about_end_of_life_wishes",
-             "asked_by_whom", "cat.prefered_place_of_care", "home_care",
+             "asked_by_whom", "cat.prefered_place_of_care", "home_care", "Charlson_withage",
              "pod.family_friends", "pod.GP", "pod.neurologist", "pod.AD", "Hoehn_Yahr", "dbs")
 
 results_homedeath = c()
