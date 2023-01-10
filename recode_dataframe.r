@@ -19,7 +19,7 @@
 # 13. Nursing_support
 # 14. POD_family_friends 
 # 15. POD_GP
-# 15. POD_AD
+# 16. POD_AD
 
 # ========================================================================================================================= #
 # 1. Prefered place of death
@@ -243,7 +243,8 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.power_attorney = factor(Power_of_attorney, levels = as.factor(factor.power_of_attorney$row_number))) %>%
   mutate(attorney_power = fct_collapse(as.factor(Power_of_attorney), 	"no" = c("0"), 
 											   							"yes" = c("1"),
-      																	"maybe" = c("2")))
+      																	"no" = c("2")))
+#                                        "maybe" = c("2")))  # being recoded as 0 in case of maybe!
 levels(eol_dataframe$cat.power_attorney) = as.factor(factor.power_of_attorney$.)
 
 # ========================================================================================================================= #
@@ -265,7 +266,8 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.advance_directive = factor(Advance_directive, levels = as.factor(factor.advance_directive$row_number))) %>%
   mutate(existence_advance_directive = fct_collapse(as.factor(cat.advance_directive),"no" = c("0"), 
 											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+      																	"no" = c("2")))
+#                                        "maybe" = c("2")))  # being recoded as 0 in case of maybe!
 levels(eol_dataframe$cat.advance_directive) = as.factor(factor.advance_directive$.)
 
 # ========================================================================================================================= #
@@ -309,7 +311,8 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_family_friends = factor(POD_familiy_friends, levels = as.factor(factor.pod_family_friends$row_number))) %>%
   mutate(pod.family_friends = fct_collapse(as.factor(cat.pod_family_friends),"no" = c("0"), 
 											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+      																	"no" = c("2")))
+#                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
 levels(eol_dataframe$cat.pod_family_friends) = as.factor(factor.pod_family_friends$.)
 
 # ========================================================================================================================= #
@@ -331,7 +334,8 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_GP = factor(POD_GP, levels = as.factor(factor.pod_GP$row_number))) %>%
   mutate(pod.GP = fct_collapse(as.factor(cat.pod_GP),"no" = c("0"), 
 											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+      																	"no" = c("2")))
+#                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
 levels(eol_dataframe$cat.pod_GP) = as.factor(factor.pod_GP$.)
 
 # ========================================================================================================================= #
@@ -353,7 +357,7 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_neurologist = factor(POD_neurologist, levels = as.factor(factor.pod_neurologist$row_number))) %>%
   mutate(pod.neurologist = fct_collapse(as.factor(cat.pod_neurologist),"no" = c("0"), 
 											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+      																				"no" = c("2")))
 levels(eol_dataframe$cat.pod_neurologist) = as.factor(factor.pod_neurologist$.)
 
 # ========================================================================================================================= #
@@ -375,7 +379,29 @@ eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_AD = factor(POD_AD, levels = as.factor(factor.pod_AD$row_number))) %>%
   mutate(pod.AD = fct_collapse(as.factor(cat.pod_AD),"no" = c("0"), 
 											   										"yes" = c("1"),
-      																				"maybe" = c("2")))
+      																				"no" = c("2")))
+#                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
 levels(eol_dataframe$cat.pod_AD) = as.factor(factor.pod_AD$.)
 
+# ========================================================================================================================= #
+# 17. thoughts_about_end_of_life_wishes 
+row_temp <- dataframe_codes %>%
+  filter(Factor == "thoughts_about_end_of_life_wishes") %>% select(-c(Unit, Factor))
+
+# Extract the row, flatten the matrix into a vector, and remove the NAs
+factor.thoughts_EOLwishes <- dataframe_codes %>%
+  filter(Factor == "thoughts_about_end_of_life_wishes") %>% 
+  select(-c(Unit, Factor)) %>% 
+  unlist(t(as.matrix(row_temp))) %>% 
+  na.omit() %>% 
+  data.frame() %>% 
+  mutate(row_number = row_number()-1)  # Add a row number column
+
+# Mutate the values in the "thoughts_about_end_of_life_wishes" column using the row number as the levels and recode to binary data
+eol_dataframe <- eol_dataframe %>%
+  mutate(cat.thoughts_EOLwishes = factor(thoughts_about_end_of_life_wishes, levels = as.factor(factor.thoughts_EOLwishes$row_number))) %>%
+  mutate(oftenEOLwishes_thoughts = fct_collapse(as.factor(cat.thoughts_EOLwishes),
+                                               "no" = c("0", "1", "4"), 
+											   										   "yes" = c("2", "3")))
+levels(eol_dataframe$cat.thoughts_EOLwishes) = as.factor(factor.thoughts_EOLwishes$.)
 
