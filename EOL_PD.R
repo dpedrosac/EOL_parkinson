@@ -175,6 +175,80 @@ mdl_step 	<- train(train_data %>% select(-home_death),
 mdl_step
 varImp(mdl_step$finalModel) # Factors most contributing to data are listed here  
 
+
+# ==================================================================================================
+# c) penalized regression using {caret}-package and bootstrap the "optimism of the fit"
+# Formula for "Brier" cf. https://stackoverflow.com/questions/61014688/r-caret-package-brier-score?rq=1
+
+BigSummary <- function (data, lev = NULL, model = NULL) {
+  pr_auc <- try(MLmetrics::PRAUC(data[, lev[1]],
+                                 ifelse(data$obs == lev[1], 1, 0)),
+                silent = TRUE)
+  brscore <- try(mean((data[, lev[1]] - ifelse(data$obs == lev[1], 1, 0)) ^ 2),
+               silent = TRUE)
+  rocObject <- try(pROC::roc(ifelse(data$obs == lev[1], 1, 0), data[, lev[1]],
+                             direction = "<", quiet = TRUE), silent = TRUE)
+  if (inherits(pr_auc, "try-error")) pr_auc <- NA
+  if (inherits(brscore, "try-error")) brscore <- NA
+  rocAUC <- if (inherits(rocObject, "try-error")) {
+    NA
+  } else {
+    rocObject$auc
+  }
+  tmp <- unlist(e1071::classAgreement(table(data$obs,
+                                            data$pred)))[c("diag", "kappa")]
+  out <- c(Acc = tmp[[1]],
+           Kappa = tmp[[2]],
+           AUCROC = rocAUC,
+           AUCPR = pr_auc,
+           Brier = brscore,
+           Precision = caret:::precision.default(data = data$pred,
+                                                 reference = data$obs,
+                                                 relevant = lev[1]),
+           Recall = caret:::recall.default(data = data$pred,
+                                           reference = data$obs,
+                                           relevant = lev[1]),
+           F = caret:::F_meas.default(data = data$pred, reference = data$obs,
+                                      relevant = lev[1]))
+  out
+}
+
+
+# ==================================================================================================
+
+train_data = data_full_glm 
+lambda.grid <- seq(0, 100)
+alpha.grid <- seq(0, 1, length = 11)
+lambda <- expand.grid(alpha = alpha.grid, #alpha=1,
+  lambda = seq(0, 3, length = 100)) #seq(0, 1, by = 0.1)) #
+train_control <- trainControl(method = "repeatedcv",
+							  number = 5,
+							  repeats = 2,
+							  summaryFunction=mnLogLoss, #BigSummary,
+							  savePredictions = "final", 
+							  classProbs = TRUE,
+							  verboseIter = TRUE)
+
+mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
+					 data=data_full_glm,
+					  method = 'glmnet', 
+					  preProcess = c("center", "scale","pca"), #, "pca"),
+					  tuneLength = 10, #"ROC",
+					  family="binomial",
+					  trControl = train_control,
+					  metric = "LogLoss", #"Brier",
+					  tuneGrid = lambda )
+mdl_pen
+coef(mdl_pen$finalModel, mdl_pen$bestTune$lambda)
+
+# TODO David: There are two things to do: 
+# 1. find out whether pca is meaningful to reduce data complexity in a first place
+# 2. create a for loop with a bootstrap ot get confidence intervals in the model.
+# 3- run GLM with the resulting valus for the estimates of the predictors (OR, etc.)
+
+
+
+
 # TODO: For sanity checks one may plot results like this:
 # data_full_glm %>% 
 #	ggplot(aes(x=home_death, y=Charlson_withage)) + 
