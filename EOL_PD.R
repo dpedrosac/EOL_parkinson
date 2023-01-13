@@ -72,7 +72,7 @@ NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_
 tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) 
 print(tab2)
 write.csv(print(tab2, quote = FALSE, 
-                noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = "TableOne_EOL.csv")
+                noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = file.path(data_dir, "results", "TableOne_EOL.csv"))
 
 
 # ==================================================================================================
@@ -393,7 +393,7 @@ for (fac in factorsOR1) { # for loop over factors of interest
   
 
 tabOR <- results_OR1 %>% select(2:5) %>% mutate(across(where(is.numeric), ~ round(.,2))) #<- table with odds ratios
-write.xlsx(tabOR, file = "TableOR.xlsx", overwrite=TRUE)
+write.xlsx(tabOR, file = file.path(data_dir, "results", "TableOR.xlsx"), overwrite=TRUE)
 
 results_OR1 %>%
   dplyr::arrange(boxOdds) %>%
