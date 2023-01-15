@@ -1,7 +1,7 @@
 # This is code to run analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
-# Version 1.1 # 2023-01-08, added the stepwise regression functionality as first draft
+# Version 1.1 # 2023-01-15, added the penalised regression functionality and critically appraised the complicated regression model
 
 ## First specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret",
@@ -38,6 +38,7 @@ dataframe_codes_clean <- dataframe_codes %>%
 # ==================================================================================================
 # Recode variables
 source("recode_dataframe.r")  					# data is recoded and structured according to labels
+# TODO ANNA: Check factorsOR1, find formula for PDQ39 estimation. Add PDQ-39 subscores? Cohabitation with values of 15 and 30,
 
 
 # ==================================================================================================
@@ -72,7 +73,7 @@ NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_
 tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) 
 print(tab2)
 write.csv(print(tab2, quote = FALSE, 
-                noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = file.path(data_dir, "results", "TableOne_EOL.csv"))
+                noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = file.path(wdir, "results", "TableOne_EOL.csv"))
 
 
 # ==================================================================================================
@@ -87,13 +88,14 @@ factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german"
 					   "oftenEOLwishes_thoughts", "Sharing_of_thoughts", 
 					   "asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care", 
 					   "home_care", "Charlson_withage", "pod.family_friends", "pod.GP", "pod.neurologist",
-					   "pod.AD", "Hoehn_Yahr", "dbs")
+					   "pod.AD", "Hoehn_Yahr", "LEDD", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "dbs")
 # factors excluded because of redundancy or because incomplete: "independent_living", "Thoughts_dicussed_with"
 # TODO Anna: Some of the predictors should be checks as if they may be interesting to look at in a refactored way?
 
-data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>% mutate(across(c(1,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,23,24,25,27,28), as.factor)) %>%
+data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>% mutate(across(c(1,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,23,24,25,32, 33), as.factor)) %>%
 select(-pod.neurologist, -asked_about_end_of_life_wishes, -Sharing_of_thoughts, -asked_by_whom) %>%
 filter(professional_education!="other")
+data_full_glm$bdi_score[58] = 9
 
 # TODO Anna: Is it ok, to put these factors together?
 data_full_glm <- data_full_glm %>%
@@ -218,28 +220,65 @@ BigSummary <- function (data, lev = NULL, model = NULL) {
 
 train_data = data_full_glm 
 lambda.grid <- seq(0, 100)
-alpha.grid <- seq(0, 1, length = 11)
+alpha.grid <- 1# seq(0, 1, length = 11)
 lambda <- expand.grid(alpha = alpha.grid, #alpha=1,
-  lambda = seq(0, 3, length = 100)) #seq(0, 1, by = 0.1)) #
+  lambda = seq(0, 1, length = 100)) #seq(0, 1, by = 0.1)) #
 train_control <- trainControl(method = "repeatedcv",
 							  number = 5,
 							  repeats = 2,
 							  summaryFunction=mnLogLoss, #BigSummary,
-							  savePredictions = "final", 
+							  savePredictions = "all", 
 							  classProbs = TRUE,
 							  verboseIter = TRUE)
 
 mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
 					 data=data_full_glm,
 					  method = 'glmnet', 
-					  preProcess = c("center", "scale","pca"), #, "pca"),
-					  tuneLength = 10, #"ROC",
+					  preProcess = c("center", "scale", "pca"),
+					  tuneLength = 100, #"ROC",
 					  family="binomial",
 					  trControl = train_control,
 					  metric = "LogLoss", #"Brier",
 					  tuneGrid = lambda )
 mdl_pen
 coef(mdl_pen$finalModel, mdl_pen$bestTune$lambda)
+plot(mdl_pen)
+
+
+mdl_temp 	<- train(as.formula(paste( 'home_death', '~', '.')), 
+					 data=data_full_glm,
+					  method = 'glmnet', 
+					  #preProcess = c("center", "scale", "nzv"),
+					  tuneLength = 100, #"ROC",
+					  family="binomial",
+					  trControl = train_control,
+					  metric = "LogLoss", #"Brier",
+					  tuneGrid = lambda )
+
+library("corrplot")
+library("factoextra")
+
+dat_input = as.tibble(mdl_temp$finalModel$call$x)
+y_input = mdl_pen$finalModel$call$y
+PCA.mdl_pen = prcomp(dat_input)
+cbind(PCA.mdl_pen$rotation[,2], mdl_pen$preProcess$rotation[,2])
+
+dat_input["home_death"] <- y_input
+var <- get_pca_var(PCA.mdl_pen)
+corrplot(var$contrib, is.corr=FALSE)
+
+mdl_red <- train(as.formula(paste( 'home_death', '~', '.')), 
+					 data=dat_input %>% select(c("marriedyes", "professional_educationapprenticeship",
+												 "cat.prefered_place_of_carenot_important", 
+												 "pod.family_friendsyes", "home_careyes", 
+												 "receiving_nursing_supportformal", 
+												 "residential_locationyes", "hospice_knowledge1", "home_death")),
+					  method = 'glm', 
+					  preProcess = c("center", "scale", "nzv"),
+					  family="binomial",
+					  metric = "Accuracy")
+
+
 
 # TODO David: There are two things to do: 
 # 1. find out whether pca is meaningful to reduce data complexity in a first place
@@ -357,7 +396,6 @@ pe <- evalmod(
 # Run regression analyses
 colnames(eol_dataframe) # list of column names which may be used to define the factors of interest
 
-# TODO ANNA: Check factorsOR1, find formula for PDQ39 estimation, Cohabitation with values of 15 and 30,
 factorsOR1 = c("gender", "age", "age_at_diagnosis", "duration", "german", "married", "religious_affiliation", "independent_living",
              "receiving_nursing_support", "residential_location", "professional_education", "existence_advance_directive",
              "attorney_power", "palliative_care_knowledge", "hospice_knowledge",

@@ -20,6 +20,13 @@
 # 14. POD_family_friends 
 # 15. POD_GP
 # 16. POD_AD
+# 17. Thoughts_about_end_of_life_wishes
+# 18. People to which pod has been communicated 
+# 19. Charlson comorbidity index 
+# 20. PC of disease severity?
+# 21. composite score for palliative care literacy?
+# 22. ordinal score for the degree of assistence?
+
 
 # ========================================================================================================================= #
 # 1. Prefered place of death
@@ -405,3 +412,41 @@ eol_dataframe <- eol_dataframe %>%
 											   										   "yes" = c("2", "3")))
 levels(eol_dataframe$cat.thoughts_EOLwishes) = as.factor(factor.thoughts_EOLwishes$.)
 
+# ========================================================================================================================= #
+# 18. People to which pod has been communicated 
+
+df_temp <- eol_dataframe %>% select(starts_with("pod.")) %>%
+  mutate(total_pod = rowSums(sapply(., function(col) str_count(col, "yes"))))
+
+# add column to the original data frame
+eol_dataframe$total_pod <- df_temp$total_pod
+
+# ========================================================================================================================= #
+# 19. Charlson comorbidity index # TODO Anna: Wouldn't a different score be more precise (Elixhauser score or similar?)
+
+eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage * .9))
+
+
+# ========================================================================================================================= #
+# 20. # TODO Anna: Would propose taking the principal component of the following (very correlated) columns:
+
+pca_severity = c("duration", "updrs_total", "Hoehn_Yahr", "LEDD", "CCI")
+correlation_matrix <- cor(eol_dataframe %>% select(updrs_total, LEDD, CCI, Hoehn_Yahr, duration), method="spearman")
+corrplot(correlation_matrix)
+
+df_temp <- eol_dataframe  %>% select(all_of(pca_severity))
+pca <- prcomp(df_temp, retx=T)
+df_temp_transformed <- pca$x
+vars_transformed <- apply(df_temp_transformed, 2, var)
+vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
+
+# ========================================================================================================================= #
+# 21. # TODO Anna: Would propose creating a composite score of palliative care literacy/awareness or similar with:
+
+PC_severity = c("existence_advance_directive", "attorney_power", "hospice_knowledge", "palliative_care_knowledge")
+
+# ========================================================================================================================= #
+# 22. # TODO Anna: ordinal score for the degree of assistence?
+
+# Does it make sense to add a score for the degree of assistence in care? An ordinal scale, which would aid in interpreting 
+# increases of x goe along with a higher odd to affirm home_death = yes 
