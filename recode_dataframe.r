@@ -11,7 +11,7 @@
 # 5. Marital status 
 # 6. Housing situation 
 # 7. Education
-# 8. Residential location #TODO ANNA: There are some subjects coded as "4" which doesn't appear in the codes!
+# 8. Residential location
 # 9. Knowledge about palliative care
 # 10. Knowledge about hospice
 # 11. Power of attorney
@@ -23,9 +23,7 @@
 # 17. Thoughts_about_end_of_life_wishes
 # 18. People to which pod has been communicated 
 # 19. Charlson comorbidity index 
-# 20. PC of disease severity?
-# 21. composite score for palliative care literacy?
-# 22. ordinal score for the degree of assistence?
+# 20. Principal component of disease severity?
 
 
 # ========================================================================================================================= #
@@ -188,7 +186,12 @@ factor.residential_location <- dataframe_codes %>%
 # Mutate the values in the "Residential_location" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.residential_location = factor(Residential_location, levels = as.factor(factor.residential_location$row_number)))  %>%
-  mutate(residential_location = ifelse(Residential_location == "3", "yes", "no"))
+  mutate(residential_location = fct_collapse(as.factor(Residential_location), 	"no" = c("0"),
+											   							"no" = c("1"),
+											   							"no" = c("2"),
+																		"yes" = c("3"),
+      																	"yes" = c("4")))
+
 levels(eol_dataframe$cat.residential_location) = as.factor(factor.residential_location$.)
 
 # ========================================================================================================================= #
@@ -408,8 +411,8 @@ factor.thoughts_EOLwishes <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.thoughts_EOLwishes = factor(thoughts_about_end_of_life_wishes, levels = as.factor(factor.thoughts_EOLwishes$row_number))) %>%
   mutate(oftenEOLwishes_thoughts = fct_collapse(as.factor(cat.thoughts_EOLwishes),
-                                               "no" = c("0", "1", "4"), 
-											   										   "yes" = c("2", "3")))
+                                               	"no" = c("0"),
+												"yes" = c("1", "2", "3", "4")))
 levels(eol_dataframe$cat.thoughts_EOLwishes) = as.factor(factor.thoughts_EOLwishes$.)
 
 # ========================================================================================================================= #
@@ -422,13 +425,13 @@ df_temp <- eol_dataframe %>% select(starts_with("pod.")) %>%
 eol_dataframe$total_pod <- df_temp$total_pod
 
 # ========================================================================================================================= #
-# 19. Charlson comorbidity index # TODO Anna: Wouldn't a different score be more precise (Elixhauser score or similar?)
+# 19. Charlson comorbidity index, i.e. the probability of mortality
 
 eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage * .9))
 
 
 # ========================================================================================================================= #
-# 20. # TODO Anna: Would propose taking the principal component of the following (very correlated) columns:
+# 20. # Principal component of disease severity:
 
 pca_severity = c("duration", "updrs_total", "Hoehn_Yahr", "LEDD", "CCI")
 correlation_matrix <- cor(eol_dataframe %>% select(updrs_total, LEDD, CCI, Hoehn_Yahr, duration), method="spearman")
@@ -439,14 +442,3 @@ pca <- prcomp(df_temp, retx=T)
 df_temp_transformed <- pca$x
 vars_transformed <- apply(df_temp_transformed, 2, var)
 vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
-
-# ========================================================================================================================= #
-# 21. # TODO Anna: Would propose creating a composite score of palliative care literacy/awareness or similar with:
-
-PC_severity = c("existence_advance_directive", "attorney_power", "hospice_knowledge", "palliative_care_knowledge")
-
-# ========================================================================================================================= #
-# 22. # TODO Anna: ordinal score for the degree of assistence?
-
-# Does it make sense to add a score for the degree of assistence in care? An ordinal scale, which would aid in interpreting 
-# increases of x goe along with a higher odd to affirm home_death = yes 
