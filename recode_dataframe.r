@@ -433,12 +433,16 @@ eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage *
 # ========================================================================================================================= #
 # 20. # Principal component of disease severity:
 
-pca_severity = c("duration", "updrs_total", "Hoehn_Yahr", "LEDD", "CCI")
-correlation_matrix <- cor(eol_dataframe %>% select(updrs_total, LEDD, CCI, Hoehn_Yahr, duration), method="spearman")
-corrplot(correlation_matrix)
+pca_severity = c("duration", "UPDRS_sum", "Hoehn_Yahr", "LEDD")
+flag = FALSE
+if (flag){
+	correlation_matrix <- cor(eol_dataframe  %>% select(all_of(pca_severity)), method="spearman")
+	corrplot(correlation_matrix) # plot correlation coefficients
+}
 
 df_temp <- eol_dataframe  %>% select(all_of(pca_severity))
-pca <- prcomp(df_temp, retx=T)
+pca <- prcomp(df_temp, retx=TRUE, scale=TRUE, center = TRUE)
 df_temp_transformed <- pca$x
 vars_transformed <- apply(df_temp_transformed, 2, var)
 vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
+eol_dataframe$disease_severityPC <- pca$x[,1]

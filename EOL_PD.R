@@ -4,7 +4,7 @@
 # Version 1.1 # 2023-01-15, added the penalised regression functionality and critically appraised the complicated regression model
 
 ## First specify the packages of interest
-packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret",
+packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot",
              "psych", "DescTools", "jtools", "rstatix", "ggpubr", "dplyr", "precrec", "MLmetrics")
 source("load_packages.r") 							# all defined [packages] are loaded - helper file
 
@@ -38,8 +38,7 @@ dataframe_codes_clean <- dataframe_codes %>%
 # ==================================================================================================
 # Recode variables
 source("recode_dataframe.r")  					# data is recoded and structured according to labels
-# TODO ANNA: Check factorsOR1, find formula for PDQ39 estimation. Add PDQ-39 subscores? Cohabitation with values of 15 and 30,
-
+eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] = NaN # Outliers in the data were removed!
 
 # ==================================================================================================
 # Recode variables
@@ -56,8 +55,8 @@ allVars <- c(	"gender", "age", "age_at_diagnosis", "duration", "marital_status",
 			 	"cat.thoughts_EOLwishes", "Sharing_of_thoughts", "Thoughts_dicussed_with", 
 			 	"asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care",
             	"cat.prefered_place_of_death", "cat.pod_family_friends", "cat.pod_GP", "cat.pod_neurologist", 
-			 	"cat.pod_AD", "LEDD", "Hoehn_Yahr", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", 
-			 	"Charlson_withoutage", "Charlson_withage", "dbs")
+			 	"cat.pod_AD", "LEDD", "Hoehn_Yahr", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score",
+			 	"Charlson_withoutage", "Charlson_withage")
 
 catVars <- c(	"gender", "german", "cat.marital_status", "religion_belief_worldview", 
 				"cat.independent_living", "cat.nursing_support", "cat.residential_location", "cat.education", 
@@ -65,7 +64,7 @@ catVars <- c(	"gender", "german", "cat.marital_status", "religion_belief_worldvi
 				"cat.hospice_knowledge", "cat.thoughts_EOLwishes", "Sharing_of_thoughts", 
 				"Thoughts_dicussed_with", "asked_about_end_of_life_wishes", "asked_by_whom", 
 				"cat.prefered_place_of_care", "cat.prefered_place_of_death", "cat.pod_family_friends", 
-			 	"cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "Hoehn_Yahr", "dbs")
+			 	"cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "Hoehn_Yahr")
 
 NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_sum", "bdi_score", "MOCA_score", 
 				"Charlson_withoutage","Charlson_withage", "Cohabitation")
@@ -73,13 +72,12 @@ NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_
 tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars) 
 print(tab2)
 write.csv(print(tab2, quote = FALSE, 
-                noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE), file = file.path(wdir, "results", "TableOne_EOL.csv"))
+          noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE),
+		  file = file.path(wdir, "results", "TableOne_EOL.csv"))
 
 
 # ==================================================================================================
-# Stepwise linear regression in order to reduce dimensionality/extract the most meaningful predictors
-# needed_healthcare_but_did_not_receive_it_duringCovid.C4, which ranges from 1 to 5 (and NA)
-# Method inspired from http://rstudio-pubs-static.s3.amazonaws.com/448536_221fe7b85ca1471d8f4a53c05fcbe95b.html among other sources
+# Different linear regression models are applied in order to reduce dimensionality/extract the most meaningful predictors
 
 factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german", "married", 
 					   "religious_affiliation","receiving_nursing_support", "residential_location",
@@ -87,22 +85,18 @@ factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german"
 					   "attorney_power", "palliative_care_knowledge", "hospice_knowledge",
 					   "oftenEOLwishes_thoughts", "Sharing_of_thoughts", 
 					   "asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care", 
-					   "home_care", "Charlson_withage", "pod.family_friends", "pod.GP", "pod.neurologist",
-					   "pod.AD", "Hoehn_Yahr", "LEDD", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "dbs")
-# factors excluded because of redundancy or because incomplete: "independent_living", "Thoughts_dicussed_with"
-# TODO Anna: Some of the predictors should be checks as if they may be interesting to look at in a refactored way?
+					   "home_care", "Charlson_withage", "pod.neurologist", "Hoehn_Yahr", "LEDD",
+					   "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "disease_severityPC")
 
-data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>% mutate(across(c(1,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,23,24,25,32, 33), as.factor)) %>%
-select(-pod.neurologist, -asked_about_end_of_life_wishes, -Sharing_of_thoughts, -asked_by_whom) %>%
-filter(professional_education!="other")
+data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>%
+	mutate(across(c(1,5:20,22,30), as.factor)) %>%
+	select(-pod.neurologist, -asked_about_end_of_life_wishes, -Sharing_of_thoughts, -asked_by_whom) %>%
+	filter(professional_education!="other")
 data_full_glm$bdi_score[58] = 9
 
-# TODO Anna: Is it ok, to put these factors together?
 data_full_glm <- data_full_glm %>%
   mutate(cat.prefered_place_of_care = fct_collapse(as.factor(cat.prefered_place_of_care), "other" = c("Hospital", "household_of_relatives"))) 
 data_full_glm <- droplevels(data_full_glm)
-# TODO Anna: Is it ok, to put these factors together? Does str(data_full_glm) provide the right assignments
-
 
 # ==================================================================================================
 ## GLM analyses, that is full model vs. model w/ stepwise reduction w/ glmStepAIC from {caret} package
@@ -219,14 +213,15 @@ BigSummary <- function (data, lev = NULL, model = NULL) {
 # ==================================================================================================
 
 train_data = data_full_glm 
-lambda.grid <- seq(0, 100)
-alpha.grid <- 1# seq(0, 1, length = 11)
-lambda <- expand.grid(alpha = alpha.grid, #alpha=1,
-  lambda = seq(0, 1, length = 100)) #seq(0, 1, by = 0.1)) #
+lambda.grid <- seq(0.0001, 1, length = 100) #seq(0, 100)
+alpha.grid <- seq(0, 1, length = 11) #1
+grid_total <- expand.grid(alpha = alpha.grid,
+                          lambda = lambda.grid)
+
 train_control <- trainControl(method = "repeatedcv",
 							  number = 5,
 							  repeats = 2,
-							  summaryFunction=mnLogLoss, #BigSummary,
+							  summaryFunction=BigSummary,
 							  savePredictions = "all", 
 							  classProbs = TRUE,
 							  verboseIter = TRUE)
@@ -234,12 +229,12 @@ train_control <- trainControl(method = "repeatedcv",
 mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
 					 data=data_full_glm,
 					  method = 'glmnet', 
-					  preProcess = c("center", "scale", "pca"),
+					  preProcess = c("nzv", "center", "scale"),
 					  tuneLength = 100, #"ROC",
 					  family="binomial",
 					  trControl = train_control,
-					  metric = "LogLoss", #"Brier",
-					  tuneGrid = lambda )
+					  metric = "Brier", #"logLoss", #"Brier",
+					  tuneGrid = grid_total )
 mdl_pen
 coef(mdl_pen$finalModel, mdl_pen$bestTune$lambda)
 plot(mdl_pen)
