@@ -112,9 +112,13 @@ data_full_glm$bdi_score[59] = 9
 
 data_full_glm <- data_full_glm %>%
   mutate(cat.prefered_place_of_care = fct_collapse(as.factor(cat.prefered_place_of_care),
-												   "other" = c("Hospital", "household_of_relatives"))) %>%
-	mutate_at(4, funs(round(., 1)))
-data_full_glm <- droplevels(data_full_glm)
+												   "other" = c("Hospital", "household_of_relatives", "Hospice", "not_important"))) %>%
+  mutate(professional_education = fct_collapse(as.factor(professional_education),
+												   "1" = c("0", "1"))) %>%
+	mutate_at(4, funs(round(., 1))) %>%
+	 mutate(home_care = recode(home_care, "no" = 0, "yes" = 1)) %>%
+	mutate(across(17, as.factor)) # convert to factors
+data_full_glm <- droplevels(data_full_glm) %>% drop_na()
 
 # ==================================================================================================
 ## GLM analyses, that is full model vs. model w/ stepwise reduction (glmStepAIC) from {caret} package
@@ -131,8 +135,8 @@ model_est 	<- data.frame(model_name=c("Full GLM", "Stepwise reduced GLM", "Elast
 # a) FULL GLM and save results to workspace {mdl_full}
 # train_data <- model.frame(home_death ~ ., data = train_data) # drop unused factors
 train_control <- trainControl(method = "repeatedcv",
-							  number = 10,
-							  repeats=5,
+							  number = 5,
+							  repeats=10,
 							  summaryFunction = mnLogLoss,
 							  savePredictions = "final",
 							  classProbs = TRUE,
@@ -182,7 +186,7 @@ fig3a <- data.frame(pred = mdl_full_preds$yes, obs = test_data$home_death) %>%
 	autoplot() +
 	theme_bw() +
 	labs(title = "Prediction of the model in the test dataset",
-		subtitle = "Full GLM including all predictors") +
+		subtitle = "Penalised GLM with a elasticnet approach") +
 	geom_text(data=annotation_full, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
@@ -236,7 +240,7 @@ fig3b <- data.frame(pred = mdl_step_preds$yes, obs = test_data$home_death) %>%
 	autoplot() +
 	theme_bw() +
 	labs(title = "Prediction of the model in the test dataset",
-		subtitle = "Stepwise reduced GLM including all predictors") +
+		subtitle = "Stepwise reduced GLM") +
 	geom_text(data=annotation_step, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
@@ -253,10 +257,10 @@ grid_total <- expand.grid(alpha = alpha.grid,
                           lambda = lambda.grid)
 
 mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
-					 data=train_data,
+					 data=train_data %>% select(c(1:3, 5:17, 18, 19:25, 26)),
 					  method = 'glmnet', 
 					  preProcess = c("center", "scale"),
-					  tuneLength = 100, #"ROC",
+					  tuneLength = 10, #"ROC",
 					  family="binomial",
 					  trControl = train_control,
 					  metric = "logLoss", #"Brier",
@@ -298,7 +302,7 @@ fig3c <- data.frame(pred = mdl_pen_preds$yes, obs = test_data$home_death) %>%
 	autoplot() +
 	theme_bw() +
 	labs(title = "Prediction of the model in the test dataset",
-		subtitle = "Stepwise reduced GLM including all predictors") +
+		subtitle = "Penalised GLM with Elastic Net") +
 	geom_text(data=annotation_pen, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
