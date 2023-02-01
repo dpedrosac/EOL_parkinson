@@ -163,9 +163,9 @@ factor.education <- dataframe_codes %>%
 # Mutate the values in the "Professional_education" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.education = factor(Professional_education, levels = as.factor(factor.education$row_number))) %>%
-  mutate(professional_education = fct_collapse(as.factor(Professional_education), 	"none" = c("0"), 
-											   										"apprenticeship" = c("1"),
-      																				"university degree" = c("2", "3"),
+  mutate(professional_education = fct_collapse(as.factor(Professional_education), 	"0" = c("0"),
+											   										"1" = c("1"),
+      																				"2" = c("2", "3"),
       																				"other" = c("4")))
 levels(eol_dataframe$cat.education) = as.factor(factor.education$.)
 
@@ -186,11 +186,11 @@ factor.residential_location <- dataframe_codes %>%
 # Mutate the values in the "Residential_location" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.residential_location = factor(Residential_location, levels = as.factor(factor.residential_location$row_number)))  %>%
-  mutate(residential_location = fct_collapse(as.factor(Residential_location), 	"no" = c("0"),
+  mutate(rurality = fct_collapse(as.factor(Residential_location), 	"no" = c("0"),
 											   							"no" = c("1"),
-											   							"no" = c("2"),
+											   							"yes" = c("2"),
 																		"yes" = c("3"),
-      																	"yes" = c("4")))
+       																	"yes" = c("4")))
 
 levels(eol_dataframe$cat.residential_location) = as.factor(factor.residential_location$.)
 
@@ -445,4 +445,4 @@ pca <- prcomp(df_temp, retx=TRUE, scale=TRUE, center = TRUE)
 df_temp_transformed <- pca$x
 vars_transformed <- apply(df_temp_transformed, 2, var)
 vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
-eol_dataframe$disease_severityPC <- pca$x[,1]
+eol_dataframe$disease_severityPC <- c(pca$x[,1])

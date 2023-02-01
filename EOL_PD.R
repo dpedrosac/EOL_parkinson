@@ -1,7 +1,7 @@
 # This is code to run analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
-# Version 1.1 # 2023-01-15, added the penalised regression functionality and critically appraised the complicated regression model
+# Version 1.2 # 2023-02-01, added functionality on statistics
 
 ## First specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot",
@@ -37,8 +37,11 @@ dataframe_codes_clean <- dataframe_codes %>%
 
 # ==================================================================================================
 # Recode variables
-source("recode_dataframe.r")  					# data is recoded and structured according to labels
-eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] = NaN # Outliers in the data were removed!
+source("recode_dataframe.r") 	# data is recoded and structured according to labels
+eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] = NaN 								# Outliers removed!
+eol_dataframe$cat.education[eol_dataframe$cat.education=='Other'] = NaN 					# Subj. claiming 'Other' discarded!
+eol_dataframe$professional_education[eol_dataframe$professional_education=='other'] = NaN 	# Subj. claiming 'Other' discarded!
+
 
 # ==================================================================================================
 # Recode variables
@@ -46,13 +49,13 @@ source("summarise_questionnaires.r")  			# questionnaires (UPDRS, PDQ, MoCA)
 
 
 # ==================================================================================================
-# Create Table 1 with all data
+# Create Table One with all data
 
 allVars <- c(	"gender", "age", "age_at_diagnosis", "duration", "marital_status", "cat.education",
 				"Religious_affiliation", "cat.independent_living", "Cohabitation", "cat.nursing_support", 
 			 	"cat.residential_location", "cat.education", "cat.advance_directive", "cat.power_attorney",
-            	"cat.palliative_care_knowledge", "cat.hospice_knowledge", 
-			 	"cat.thoughts_EOLwishes", "Sharing_of_thoughts", "Thoughts_dicussed_with", 
+            	"cat.palliative_care_knowledge", "cat.hospice_knowledge", "cat.thoughts_EOLwishes",
+				 "Sharing_of_thoughts", "Thoughts_dicussed_with",
 			 	"asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care",
             	"cat.prefered_place_of_death", "cat.pod_family_friends", "cat.pod_GP", "cat.pod_neurologist", 
 			 	"cat.pod_AD", "LEDD", "Hoehn_Yahr", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score",
@@ -77,47 +80,70 @@ write.csv(print(tab2, quote = FALSE,
 
 
 # ==================================================================================================
+# Some basic stats (non-parametric and parametric tests)
+
+stat.test.np <- eol_dataframe %>% select(all_of(NumVars), home_death) %>%
+	summarise(across(!home_death, ~wilcox.test(.x ~ home_death)$p.value))
+
+stat.test.param <- eol_dataframe %>% select(all_of(NumVars), home_death) %>%
+gather(key = variable, value = value, -home_death) %>%
+  group_by(home_death, variable) %>%
+  summarise(value = list(value)) %>%
+  spread(home_death, value) %>%
+  group_by(variable) %>%
+	mutate(p_value = t.test(unlist(yes), unlist(no))$p.value,
+         t_value = t.test(unlist(yes), unlist(no))$statistic)
+
+
+# ==================================================================================================
 # Different linear regression models are applied in order to reduce dimensionality/extract the most meaningful predictors
 
 factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german", "married", 
-					   "religious_affiliation","receiving_nursing_support", "residential_location",
+					   "religious_affiliation","receiving_nursing_support", "rurality",
 					   "professional_education", "existence_advance_directive",
 					   "attorney_power", "palliative_care_knowledge", "hospice_knowledge",
-					   "oftenEOLwishes_thoughts", "Sharing_of_thoughts", 
-					   "asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care", 
-					   "home_care", "Charlson_withage", "pod.neurologist", "Hoehn_Yahr", "LEDD",
+					   "oftenEOLwishes_thoughts", "cat.prefered_place_of_care",
+					   "home_care", "Charlson_withage", "Hoehn_Yahr", "LEDD",
 					   "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "disease_severityPC")
 
 data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>%
-	mutate(across(c(1,5:20,22,30), as.factor)) %>%
-	select(-pod.neurologist, -asked_about_end_of_life_wishes, -Sharing_of_thoughts, -asked_by_whom) %>%
-	filter(professional_education!="other")
+	mutate(across(c(1,5:19,28), as.factor)) # convert to factors
 data_full_glm$bdi_score[58] = 9
 
 data_full_glm <- data_full_glm %>%
-  mutate(cat.prefered_place_of_care = fct_collapse(as.factor(cat.prefered_place_of_care), "other" = c("Hospital", "household_of_relatives"))) 
+  mutate(cat.prefered_place_of_care = fct_collapse(as.factor(cat.prefered_place_of_care),
+												   "other" = c("Hospital", "household_of_relatives")))
 data_full_glm <- droplevels(data_full_glm)
 
 # ==================================================================================================
-## GLM analyses, that is full model vs. model w/ stepwise reduction w/ glmStepAIC from {caret} package
+## GLM analyses, that is full model vs. model w/ stepwise reduction (glmStepAIC) from {caret} package
 # Analyses adapted from: https://rpubs.com/mpfoley73/625323
 
 # Separate data into train and test dataset
-index 		<- createDataPartition(data_full_glm$home_death, p = 0.8, list = FALSE) # split data with balanced values for home_death
+index 		<- createDataPartition(data_full_glm$home_death, p = 0.75, list = FALSE) # split w/ balance for home_death
 train_data 	<- data_full_glm[index,]
 test_data 	<- data_full_glm[-index,]
-model_est 	<- data.frame(model_name=c("Full GLM", "Stepwise reduced GLM"), AUC=c(NA,NA), LogLoss=c(NA, NA), Accuracy=c(NA,NA))
+model_est 	<- data.frame(model_name=c("Full GLM", "Stepwise reduced GLM", "ElasticNet regression"),
+						   AUC=c(NA, NA, NA), LogLoss=c(NA, NA, NA), Accuracy=c(NA, NA, NA))
+
 # ==================================================================================================
 # a) FULL GLM and save results to workspace {mdl_full}
-train_data <- model.frame(home_death ~ ., data = train_data, drop.unused.levels = TRUE) # drop unused factors
-train_control <- trainControl(method = "repeatedcv", number = 10, savePredictions = "final", classProbs = TRUE, repeats=5)
-mdl_full <- train(train_data %>% select(-home_death),
+# train_data <- model.frame(home_death ~ ., data = train_data) # drop unused factors
+train_control <- trainControl(method = "repeatedcv",
+							  number = 10,
+							  summaryFunction = mnLogLoss,
+							  savePredictions = "final",
+							  classProbs = TRUE,
+							  verboseIter = TRUE,
+							  repeats=5)
+
+mdl_full <- train(train_data %>% select(c(1:3, 5:16, 18, 19:24, 26), -home_death), # select(-home_death),
 					train_data$home_death,
 					method = "glm",
-					preProcess = c("center", "scale"),
+					preProcess = c("nzv", "center", "scale"),
 					family="binomial",
 					trControl = train_control,
-					metric = "Accuracy")
+					metric = "logLoss")
 
 # Interpreting results {mdl_full}:
 mdl_full # Accuracy of full model results in ~84.1%
@@ -137,13 +163,16 @@ mdl_full_prob <- predict(mdl_full, newdata = test_data, type = "prob") %>%
         bind_cols(predict(mdl_full, test_data)) %>%
         bind_cols(select(test_data, home_death))
 
-trueLabelsBinary <- ifelse(mdl_full_prob$home_death=="yes", 1, 0)
+trueLabelsBinary_full <- ifelse(mdl_full_prob$home_death=="yes", 1, 0)
 predictedLabelsBinary <- ifelse(mdl_full_prob$`...3`=="yes", 1, 0)
-model_est$LogLoss[1] = LogLoss(mdl_full_prob$yes, trueLabelsBinary)
-model_est$AUC[1] = AUC(mdl_full_prob$yes, trueLabelsBinary)
-model_est$Accuracy[1] = mdl_full$results[[2]]
+model_est$LogLoss[1] = LogLoss(mdl_full_prob$yes, trueLabelsBinary_full)
+model_est$AUC[1] = AUC(mdl_full_prob$yes, trueLabelsBinary_full)
+model_est$Accuracy[1] = mdl_full_matrix$overall[[1]]
 
-annotation <- data.frame(x=.8, y=.6, label=sprintf("AUC = %.2f [%.2f; %.2f]", mdl_full_matrix$overall[[1]],  mdl_full_matrix$overall[[3]], mdl_full_matrix$overall[[4]]))
+annotation_full <- data.frame(x=.8, y=.6, label=sprintf("AUC = %.2f [%.2f; %.2f]",
+														mdl_full_matrix$overall[[1]],
+														mdl_full_matrix$overall[[3]],
+														mdl_full_matrix$overall[[4]]))
 
 # Print AUC for the FULL model
 options(yardstick.event_first = FALSE)  # set the second level as success
@@ -151,80 +180,75 @@ fig3a <- data.frame(pred = mdl_full_preds$yes, obs = test_data$home_death) %>%
 	yardstick::roc_curve(obs, pred) %>%
 	autoplot() +
 	theme_bw() +
-	labs(title = "Prediction that healthcare was needed but wasn't received", 
-		subtitle = "Full model GLM including all predictors") + 
-	geom_text(data=annotation, aes(x=x, y=y, label=label), color="black", fontface="bold") + 
+	labs(title = "Prediction of the model in the test dataset",
+		subtitle = "Full GLM including all predictors") +
+	geom_text(data=annotation_full, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
 
 # ==================================================================================================
 # b) stepwise regression using {caret}-package
-train_data = data_full_glm 
-mdl_step 	<- train(train_data %>% select(-home_death),
+# train_data = data_full_glm
+mdl_step <- train(train_data %>% select(c(1:4, 5:16, 18, 19:24, 26), -home_death), # select(-home_death),
                       train_data$home_death,
-                      method = 'glmStepAIC', 
-					  preProcess = c("center", "scale"),
+                      method = 'glmStepAIC',
+					  preProcess = c("nzv", "center", "scale"),
 					  tuneLength = 10, #"ROC",
 					  family="binomial",
                       trControl = train_control,
 					  metric = "Accuracy")
+
+# Interpreting results {mdl_step}:
 mdl_step
-varImp(mdl_step$finalModel) # Factors most contributing to data are listed here  
+varImp(mdl_step$finalModel) # Factors most contributing to data are listed here
+
+predicted_classes 	<- predict(mdl_step, newdata = test_data)
+predicted_probs 	<- predict(mdl_step, newdata = test_data, type = "prob")
+mdl_step_matrix 	<- confusionMatrix(predicted_classes, test_data$home_death, positive = "yes") # predictions on (independent) test data
+
+mdl_step_preds <- predict(mdl_step, newdata = test_data, type = "prob")
+(mdl_step_eval <- evalmod(
+  scores = mdl_step_preds$yes,
+  labels = test_data$home_death
+))
+
+mdl_step_prob <- predict(mdl_step, newdata = test_data, type = "prob") %>%
+        bind_cols(predict(mdl_step, test_data)) %>%
+        bind_cols(select(test_data, home_death))
+
+trueLabelsBinary_step <- ifelse(mdl_step_prob$home_death=="yes", 1, 0)
+predictedLabelsBinary <- ifelse(mdl_step_prob$`...3`=="yes", 1, 0)
+model_est$LogLoss[2] = LogLoss(mdl_step_prob$yes, trueLabelsBinary_step)
+model_est$AUC[2] = AUC(mdl_step_prob$yes, trueLabelsBinary_step)
+model_est$Accuracy[2] = mdl_step_matrix$overall[[1]]
+
+annotation_step <- data.frame(x=.8, y=.6, label=sprintf("AUC = %.2f [%.2f; %.2f]",
+												   mdl_step_matrix$overall[[1]],
+												   mdl_step_matrix$overall[[3]],
+												   mdl_step_matrix$overall[[4]]))
+
+# Print AUC for the stepwise reduced model
+options(yardstick.event_first = FALSE)  # set the second level as success
+fig3b <- data.frame(pred = mdl_step_preds$yes, obs = test_data$home_death) %>%
+	yardstick::roc_curve(obs, pred) %>%
+	autoplot() +
+	theme_bw() +
+	labs(title = "Prediction of the model in the test dataset",
+		subtitle = "Stepwise reduced GLM including all predictors") +
+	geom_text(data=annotation_step, aes(x=x, y=y, label=label), color="black", fontface="bold") +
+	coord_equal() +
+	xlab("1 - specificity") + ylab("sensitivity")
 
 
 # ==================================================================================================
-# c) penalized regression using {caret}-package and bootstrap the "optimism of the fit"
+# c) penalized regression using {caret}-package"
 # Formula for "Brier" cf. https://stackoverflow.com/questions/61014688/r-caret-package-brier-score?rq=1
 
-BigSummary <- function (data, lev = NULL, model = NULL) {
-  pr_auc <- try(MLmetrics::PRAUC(data[, lev[1]],
-                                 ifelse(data$obs == lev[1], 1, 0)),
-                silent = TRUE)
-  brscore <- try(mean((data[, lev[1]] - ifelse(data$obs == lev[1], 1, 0)) ^ 2),
-               silent = TRUE)
-  rocObject <- try(pROC::roc(ifelse(data$obs == lev[1], 1, 0), data[, lev[1]],
-                             direction = "<", quiet = TRUE), silent = TRUE)
-  if (inherits(pr_auc, "try-error")) pr_auc <- NA
-  if (inherits(brscore, "try-error")) brscore <- NA
-  rocAUC <- if (inherits(rocObject, "try-error")) {
-    NA
-  } else {
-    rocObject$auc
-  }
-  tmp <- unlist(e1071::classAgreement(table(data$obs,
-                                            data$pred)))[c("diag", "kappa")]
-  out <- c(Acc = tmp[[1]],
-           Kappa = tmp[[2]],
-           AUCROC = rocAUC,
-           AUCPR = pr_auc,
-           Brier = brscore,
-           Precision = caret:::precision.default(data = data$pred,
-                                                 reference = data$obs,
-                                                 relevant = lev[1]),
-           Recall = caret:::recall.default(data = data$pred,
-                                           reference = data$obs,
-                                           relevant = lev[1]),
-           F = caret:::F_meas.default(data = data$pred, reference = data$obs,
-                                      relevant = lev[1]))
-  out
-}
-
-
-# ==================================================================================================
-
-train_data = data_full_glm 
+# train_data = data_full_glm
 lambda.grid <- seq(0.0001, 1, length = 100) #seq(0, 100)
 alpha.grid <- seq(0, 1, length = 11) #1
 grid_total <- expand.grid(alpha = alpha.grid,
                           lambda = lambda.grid)
-
-train_control <- trainControl(method = "repeatedcv",
-							  number = 5,
-							  repeats = 2,
-							  summaryFunction=BigSummary,
-							  savePredictions = "all", 
-							  classProbs = TRUE,
-							  verboseIter = TRUE)
 
 mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
 					 data=data_full_glm,
@@ -233,45 +257,96 @@ mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')),
 					  tuneLength = 100, #"ROC",
 					  family="binomial",
 					  trControl = train_control,
-					  metric = "Brier", #"logLoss", #"Brier",
+					  metric = "logLoss", #"Brier",
 					  tuneGrid = grid_total )
+
+# Interpreting results {mdl_pen}:
 mdl_pen
-coef(mdl_pen$finalModel, mdl_pen$bestTune$lambda)
-plot(mdl_pen)
+varImp(mdl_pen$finalModel) # Factors most contributing to data are listed here
+
+predicted_classes 	<- predict(mdl_pen, newdata = test_data)
+predicted_probs 	<- predict(mdl_pen, newdata = test_data, type = "prob")
+mdl_pen_matrix 	<- confusionMatrix(predicted_classes, test_data$home_death, positive = "yes") # predictions on (independent) test data
+
+mdl_pen_preds <- predict(mdl_pen, newdata = test_data, type = "prob")
+(mdl_pen_eval <- evalmod(
+  scores = mdl_pen_preds$yes,
+  labels = test_data$home_death
+))
+
+mdl_pen_prob <- predict(mdl_pen, newdata = test_data, type = "prob") %>%
+        bind_cols(predict(mdl_pen, test_data)) %>%
+        bind_cols(select(test_data, home_death))
+
+trueLabelsBinary_pen <- ifelse(mdl_pen_prob$home_death=="yes", 1, 0)
+predictedLabelsBinary <- ifelse(mdl_pen_prob$`...3`=="yes", 1, 0)
+model_est$LogLoss[3] = LogLoss(mdl_pen_prob$yes, trueLabelsBinary_pen)
+model_est$AUC[3] = AUC(mdl_pen_prob$yes, trueLabelsBinary_step)
+model_est$Accuracy[3] = mdl_pen_matrix$overall[[1]]
+
+annotation_pen <- data.frame(x=.8, y=.6, label=sprintf("AUC = %.2f [%.2f; %.2f]",
+												   mdl_pen_matrix$overall[[1]],
+												   mdl_pen_matrix$overall[[3]],
+												   mdl_pen_matrix$overall[[4]]))
+
+# Print AUC for the FULL model
+options(yardstick.event_first = FALSE)  # set the second level as success
+fig3c <- data.frame(pred = mdl_pen_preds$yes, obs = test_data$home_death) %>%
+	yardstick::roc_curve(obs, pred) %>%
+	autoplot() +
+	theme_bw() +
+	labs(title = "Prediction of the model in the test dataset",
+		subtitle = "Stepwise reduced GLM including all predictors") +
+	geom_text(data=annotation_pen, aes(x=x, y=y, label=label), color="black", fontface="bold") +
+	coord_equal() +
+	xlab("1 - specificity") + ylab("sensitivity")
+# TODO: Save figure 2a/b/c
 
 
-mdl_temp 	<- train(as.formula(paste( 'home_death', '~', '.')), 
-					 data=data_full_glm,
-					  method = 'glmnet', 
-					  #preProcess = c("center", "scale", "nzv"),
-					  tuneLength = 100, #"ROC",
-					  family="binomial",
-					  trControl = train_control,
-					  metric = "LogLoss", #"Brier",
-					  tuneGrid = lambda )
+# Compare models
+p_comparison_models <- model_est %>% pivot_longer(!model_name, names_to="metric") %>%
+  ggplot(aes(fill = model_name, y = value, x = metric)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  #scale_fill_manual(values = c("#7A8B99", "#A9DDD6")) +
+	theme_minimal() +
+	theme(text = element_text(size = 20),
+		  plot.caption = element_text(hjust = .7, face="italic"),
+		  legend.title = element_text(hjust = .5, color = "black", size = 20, face = "bold"),
+		  axis.text = element_text(size = 20),
+		  legend.position = c(0.86, 0.9),
+		  plot.margin = margin(t = 10, unit = "pt")) +
+	ylim(0,1) +
+	scale_fill_brewer(palette = 1) +
+	labs(
+		y = "",
+		x = "",
+		fill = NULL,
+		title = "Comparing full model with penalised model and reduced model",
+		caption = "Higher values indicate better performance: Accuracy and AUC\nLower values indicate better performance: Log Loss") +
+  geom_text(aes(label = round(value, 3)), vjust = -0.5, size = 5, position = position_dodge(width= 0.9)) #+
+  #coord_capped_cart()
+p_comparison_models
 
-library("corrplot")
-library("factoextra")
 
-dat_input = as.tibble(mdl_temp$finalModel$call$x)
-y_input = mdl_pen$finalModel$call$y
-PCA.mdl_pen = prcomp(dat_input)
-cbind(PCA.mdl_pen$rotation[,2], mdl_pen$preProcess$rotation[,2])
+# ==================================================================================================
+# Create table for stepwise reduced model #TODO: this is not correct and MUST be changed!
+summary_mdl_step <- data.frame(	Terms=attr(summary(mdl_step)$terms , "term.labels")[summary(mdl_step)$coef[,4] <= .05],
+								Estimate=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 1], fmt="%#.2f"),
+								Std.Error=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 2], fmt="%#.2f"),
+								zvalue=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 3], fmt="%#.2f"),
+								p=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 4], fmt="%#.3f")
+								)
+write.csv(summary_mdl_step, file.path(wdir, "results", "table_stepwise_model.csv"), row.names = F) # csv-file may be easily imported into text processing software
+# TODO: Some manual refinement of the table necessary (include "(Intercept", tidy up the predictors, etc.)
 
-dat_input["home_death"] <- y_input
-var <- get_pca_var(PCA.mdl_pen)
-corrplot(var$contrib, is.corr=FALSE)
+# ==================================================================================================
+# Summary of all results from the stepwise reduced regression and plots to show the results for the
+# identified predictors
+summary(mdl_step) # No function was traceable to get that into a table, so it has to be done manually!
 
-mdl_red <- train(as.formula(paste( 'home_death', '~', '.')), 
-					 data=dat_input %>% select(c("marriedyes", "professional_educationapprenticeship",
-												 "cat.prefered_place_of_carenot_important", 
-												 "pod.family_friendsyes", "home_careyes", 
-												 "receiving_nursing_supportformal", 
-												 "residential_locationyes", "hospice_knowledge1", "home_death")),
-					  method = 'glm', 
-					  preProcess = c("center", "scale", "nzv"),
-					  family="binomial",
-					  metric = "Accuracy")
+#TODO: Supplementary data which displeays the levels of the answers on the x-Axis and the means for 'yes' and 'no' on the y axis for the
+# supplementary data. For that we need a list of factors (-> just copy the entore list and remove what is not needed) and the ggplot routines in a loop ; )
+
 
 
 
@@ -325,57 +400,14 @@ fig3b <- data.frame(pred = mdl_step_preds$yes, obs = test_data$home_death) %>%
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
 
-# Compare models
-p_comparison_models <- model_est %>% pivot_longer(!model_name, names_to="metric") %>%
-  ggplot(aes(fill = model_name, y = value, x = metric)) + 
-  geom_bar(position = "dodge", stat = "identity") +
-  #scale_fill_manual(values = c("#7A8B99", "#A9DDD6")) +
-	theme_minimal() +
-	theme(text = element_text(size = 20),
-		  plot.caption = element_text(hjust = .7, face="italic"), 
-		  legend.title = element_text(hjust = .5, color = "black", size = 20, face = "bold"),
-		  axis.text = element_text(size = 20), 
-		  legend.position = c(0.86, 0.9), 
-		  plot.margin = margin(t = 10, unit = "pt")) +
-	ylim(0,1) +
-	scale_fill_brewer(palette = 1) + 
-	labs(
-		y = "",
-		x = "",
-		fill = NULL,
-		title = "Comparing full model with  reduced model using distinct metrics",
-		caption = "Higher values indicate better performance: Accuracy and AUC\nLower values indicate better performance: Log Loss") + 
-  geom_text(aes(label = round(value, 3)), vjust = -0.5, size = 5, position = position_dodge(width= 0.9)) #+
-  #coord_capped_cart()
-p_comparison_models
-
-# ==================================================================================================
-# Create table for stepwise reduced model
-summary_mdl_step <- data.frame(	Terms=attr(summary(mdl_step)$terms , "term.labels")[summary(mdl_step)$coef[,4] <= .05],
-								Estimate=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 1], fmt="%#.2f"),
-								Std.Error=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 2], fmt="%#.2f"),
-								zvalue=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 3], fmt="%#.2f"),
-								p=sprintf(summary(mdl_step)$coef[summary(mdl_step)$coef[,4] <= .05, 4], fmt="%#.3f")
-								)
-write.csv(summary_mdl_step, file.path(wdir, "results", "table_stepwise_model.csv"), row.names = F) # csv-file may be easily imported into text processing software
-# TODO: Some manual refinement of the table necessary (include "(Intercept", tidy up the predictors, etc.)
-
-# ==================================================================================================
-# Summary of all results from the stepwise reduced regression and plots to show the results for the 
-# identified predictors
-summary(mdl_step) # No function was traceable to get that into a table, so it has to be done manually!
-
-#TODO: Supplementary data which displeays the levels of the answers on the x-Axis and the means for 'yes' and 'no' on the y axis for the
-# supplementary data. For that we need a list of factors (-> just copy the entore list and remove what is not needed) and the ggplot routines in a loop ; ) 
-
 
 scores_list <- join_scores(
   predict(mdl_full, newdata = train_data, type = "prob")$yes,
   predict(mdl_step, newdata = train_data, type = "prob")$yes)
 
 labels_list <- join_labels(
-  train_data$dv,
-  train_data$dv)
+  train_data$home_death,
+  train_data$home_death)
 
 pe <- evalmod(
   scores = scores_list, 
@@ -398,6 +430,19 @@ factorsOR1 = c("gender", "age", "age_at_diagnosis", "duration", "german", "marri
              "asked_by_whom", "cat.prefered_place_of_care", "home_care", "Charlson_withage",
              "pod.family_friends", "pod.GP", "pod.neurologist", "pod.AD", "Hoehn_Yahr", "dbs")
 
+factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german", "married",
+					   "religious_affiliation","receiving_nursing_support", "rurality",
+					   "professional_education", "existence_advance_directive",
+					   "attorney_power", "palliative_care_knowledge", "hospice_knowledge",
+					   "oftenEOLwishes_thoughts", "Sharing_of_thoughts",
+					   "asked_about_end_of_life_wishes",
+					   "home_care", "Charlson_withage", "Hoehn_Yahr", "LEDD",
+					   "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "disease_severityPC")
+
+
+# "pod.neurologist removed as there was not much information inside, "asked_by_whom" removed
+
+factorsOR1 <- factors_regression
 results_homedeath = c()
 for (fac in factorsOR1) { # for loop over factors of interest
   mod <- as.formula(sprintf("I(home_death=='yes') ~ %s", fac)) # formula for (unadjusted) GLM
@@ -492,6 +537,41 @@ df2 <- t(round(cbind(apply(factors_eol_dataframe %>% select(-home_death), 2, fun
   c(unname(ch$statistic), ch$parameter, ch$p.value )})), 3))
 
 
+
+
+
+BigSummary <- function (data, lev = NULL, model = NULL) {
+  pr_auc <- try(MLmetrics::PRAUC(data[, lev[1]],
+                                 ifelse(data$obs == lev[1], 1, 0)),
+                silent = TRUE)
+  brscore <- try(mean((data[, lev[1]] - ifelse(data$obs == lev[1], 1, 0)) ^ 2),
+               silent = TRUE)
+  rocObject <- try(pROC::roc(ifelse(data$obs == lev[1], 1, 0), data[, lev[1]],
+                             direction = "<", quiet = TRUE), silent = TRUE)
+  if (inherits(pr_auc, "try-error")) pr_auc <- NA
+  if (inherits(brscore, "try-error")) brscore <- NA
+  rocAUC <- if (inherits(rocObject, "try-error")) {
+    NA
+  } else {
+    rocObject$auc
+  }
+  tmp <- unlist(e1071::classAgreement(table(data$obs,
+                                            data$pred)))[c("diag", "kappa")]
+  out <- c(Acc = tmp[[1]],
+           Kappa = tmp[[2]],
+           AUCROC = rocAUC,
+           AUCPR = pr_auc,
+           Brier = brscore,
+           Precision = caret:::precision.default(data = data$pred,
+                                                 reference = data$obs,
+                                                 relevant = lev[1]),
+           Recall = caret:::recall.default(data = data$pred,
+                                           reference = data$obs,
+                                           relevant = lev[1]),
+           F = caret:::F_meas.default(data = data$pred, reference = data$obs,
+                                      relevant = lev[1]))
+  out
+}
 
 
 
