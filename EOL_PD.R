@@ -107,12 +107,13 @@ factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german"
 					   "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score", "disease_severityPC")
 
 data_full_glm <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>%
-	mutate(across(c(1,5:19,28), as.factor)) # convert to factors
-data_full_glm$bdi_score[58] = 9
+	mutate(across(c(1,5:17,26), as.factor)) # convert to factors
+data_full_glm$bdi_score[59] = 9
 
 data_full_glm <- data_full_glm %>%
   mutate(cat.prefered_place_of_care = fct_collapse(as.factor(cat.prefered_place_of_care),
-												   "other" = c("Hospital", "household_of_relatives")))
+												   "other" = c("Hospital", "household_of_relatives"))) %>%
+	mutate_at(4, funs(round(., 1)))
 data_full_glm <- droplevels(data_full_glm)
 
 # ==================================================================================================
@@ -120,7 +121,7 @@ data_full_glm <- droplevels(data_full_glm)
 # Analyses adapted from: https://rpubs.com/mpfoley73/625323
 
 # Separate data into train and test dataset
-index 		<- createDataPartition(data_full_glm$home_death, p = 0.75, list = FALSE) # split w/ balance for home_death
+index 		<- createDataPartition(data_full_glm$home_death, p = 0.8, list = FALSE) # split w/ balance for home_death
 train_data 	<- data_full_glm[index,]
 test_data 	<- data_full_glm[-index,]
 model_est 	<- data.frame(model_name=c("Full GLM", "Stepwise reduced GLM", "ElasticNet regression"),
@@ -131,16 +132,16 @@ model_est 	<- data.frame(model_name=c("Full GLM", "Stepwise reduced GLM", "Elast
 # train_data <- model.frame(home_death ~ ., data = train_data) # drop unused factors
 train_control <- trainControl(method = "repeatedcv",
 							  number = 10,
+							  repeats=5,
 							  summaryFunction = mnLogLoss,
 							  savePredictions = "final",
 							  classProbs = TRUE,
-							  verboseIter = TRUE,
-							  repeats=5)
+							  verboseIter = TRUE)
 
-mdl_full <- train(train_data %>% select(c(1:3, 5:16, 18, 19:24, 26), -home_death), # select(-home_death),
+mdl_full <- train(train_data %>% select(c(1:3, 5:17, 18, 19:25, 26), -home_death), # select(-home_death),
 					train_data$home_death,
 					method = "glm",
-					preProcess = c("nzv", "center", "scale"),
+					preProcess = c("center", "scale"),
 					family="binomial",
 					trControl = train_control,
 					metric = "logLoss")
@@ -185,18 +186,19 @@ fig3a <- data.frame(pred = mdl_full_preds$yes, obs = test_data$home_death) %>%
 	geom_text(data=annotation_full, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
+fig3a
 
 # ==================================================================================================
 # b) stepwise regression using {caret}-package
 # train_data = data_full_glm
-mdl_step <- train(train_data %>% select(c(1:4, 5:16, 18, 19:24, 26), -home_death), # select(-home_death),
+mdl_step <- train(train_data %>% select(c(1:3, 5:17, 18, 19:25, 26), -home_death), # select(-home_death),
                       train_data$home_death,
                       method = 'glmStepAIC',
-					  preProcess = c("nzv", "center", "scale"),
+					  preProcess = c("center", "scale"),
 					  tuneLength = 10, #"ROC",
 					  family="binomial",
                       trControl = train_control,
-					  metric = "Accuracy")
+					  metric = "logLoss")
 
 # Interpreting results {mdl_step}:
 mdl_step
@@ -238,7 +240,7 @@ fig3b <- data.frame(pred = mdl_step_preds$yes, obs = test_data$home_death) %>%
 	geom_text(data=annotation_step, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
-
+fig3b
 
 # ==================================================================================================
 # c) penalized regression using {caret}-package"
@@ -251,9 +253,9 @@ grid_total <- expand.grid(alpha = alpha.grid,
                           lambda = lambda.grid)
 
 mdl_pen 	<- train(as.formula(paste( 'home_death', '~', '.')), 
-					 data=data_full_glm,
+					 data=train_data,
 					  method = 'glmnet', 
-					  preProcess = c("nzv", "center", "scale"),
+					  preProcess = c("center", "scale"),
 					  tuneLength = 100, #"ROC",
 					  family="binomial",
 					  trControl = train_control,
@@ -300,6 +302,7 @@ fig3c <- data.frame(pred = mdl_pen_preds$yes, obs = test_data$home_death) %>%
 	geom_text(data=annotation_pen, aes(x=x, y=y, label=label), color="black", fontface="bold") +
 	coord_equal() +
 	xlab("1 - specificity") + ylab("sensitivity")
+fig3c
 # TODO: Save figure 2a/b/c
 
 
