@@ -63,9 +63,14 @@ factor.prefered_place_of_care <- dataframe_codes %>%
 # Mutate the values in the "prefered_place_of_care" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.prefered_place_of_care = factor(prefered_place_of_care, levels = as.factor(factor.prefered_place_of_care$row_number)))  %>%
-  mutate(home_care = ifelse(prefered_place_of_care == "0", "yes", "no"))
+  mutate(home_care = fct_collapse(as.factor(prefered_place_of_care),
+								  "home" = c("0", "5"),
+								  "institution" = c("1", "2", "4"),
+								  "other" = c("3", "6")))
 levels(eol_dataframe$cat.prefered_place_of_care) = as.factor(factor.prefered_place_of_care$.)
 
+#  Because of multicollinearity, this value had to be change home_care: yes vs. no to three factors (home, institution, other)
+#   mutate(home_care = ifelse(prefered_place_of_care == "0", "yes", "no")) # original line
 # ========================================================================================================================= #
 # 3. Religious affilitaion 
 row_temp <- dataframe_codes %>%
@@ -433,7 +438,7 @@ eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage *
 # ========================================================================================================================= #
 # 20. # Principal component of disease severity:
 
-pca_severity = c("duration", "UPDRS_sum", "Hoehn_Yahr", "LEDD")
+pca_severity = c("UPDRS_sum", "Hoehn_Yahr", "LEDD")
 flag = FALSE
 if (flag){
 	correlation_matrix <- cor(eol_dataframe  %>% select(all_of(pca_severity)), method="spearman")
