@@ -13,16 +13,16 @@
 results_model <- function(method, data, train_control, tunegrid, test_data, model_name) {
 
 	mdl_caret 			<- train(as.formula(paste( 'home_death', '~', '.')),
-							  data=data,
-							  method = method,
-							  preProcess = c("nzv", "center", "scale"),
-							  family="binomial",
-							  trControl = train_control,
-							  tuneLength = 25,
-							  metric = "logLoss",
-							  tuneGrid = tunegrid)
+								  data=data,
+								  method = method,
+								  preProcess = c("nzv", "center", "scale"),
+								  family="binomial",
+								  trControl = train_control,
+								  tuneLength = 25,
+								  metric = "logLoss",
+								  tuneGrid = tunegrid)
 	estimated_model 	<- data.frame(model_name=model_name,
-								  AUC=NA, LogLoss=NA, Accuracy=NA)
+									 AUC=NA, LogLoss=NA, Accuracy=NA)
 
 	predicted_classes 	<- predict(mdl_caret, newdata = test_data)
 	mdl_caret_matrix 	<- confusionMatrix(predicted_classes, test_data$home_death, positive = "yes") # predictions on (independent) test data
@@ -48,14 +48,14 @@ print_AUC <- function(mdl, test_data, annotation, subtitle) {
 	# Print AUC for the FULL model
 	options(yardstick.event_first = FALSE)  # set the second level as success
 	fig <- data.frame(pred = predict(mdl, newdata = test_data, type = "prob")$yes, obs = test_data$home_death) %>%
-	yardstick::roc_curve(obs, pred) %>%
-	autoplot() +
-	theme_bw() +
-	labs(title = "Prediction of the model in the test dataset",
-		 subtitle = subtitle) +
-	geom_text(data=annotation, aes(x=x, y=y, label=label), color="black", fontface="bold") +
-	coord_equal() +
-	xlab("1 - specificity") + ylab("Sensitivity")
+		yardstick::roc_curve(obs, pred) %>%
+		autoplot() +
+		theme_bw() +
+		labs(title = "Prediction of the model in the test dataset",
+			 subtitle = subtitle) +
+		geom_text(data=annotation, aes(x=x, y=y, label=label), color="black", fontface="bold") +
+		coord_equal() +
+		xlab("1 - specificity") + ylab("Sensitivity")
 
 	return(fig)
 }
@@ -69,13 +69,14 @@ results_bootstrap <- function(method, data, test_data, model_name, nboot) {
 		lambda.grid		<- seq(0.0001, 1, length = 50) #seq(0, 100)
 		alpha.grid 		<- seq(0, 1, length = 11) #1
 		grid_total 		<- expand.grid(alpha = alpha.grid,
-								  lambda = lambda.grid)
+										 lambda = lambda.grid)
 		method_train 	<- "repeatedcv"
 	} else {
 		grid_total 		<- NULL
 		method_train	<- "none"
 	}
 
+	est_boot <- NA  # this ion only needed for the CI of the penalised regression and will be filled later
 	tcBoot <- trainControl(method			= method_train,
 						   summaryFunction 	= mnLogLoss,
 						   savePredictions 	= "final",
@@ -89,24 +90,36 @@ results_bootstrap <- function(method, data, test_data, model_name, nboot) {
 	options(warn=-1)
 	for (k in 1:nboot) {
 		setTxtProgressBar(pb, k)
-		model_est_boot[k,1] <- k
-		boot_idx 			<- sample(dim(data)[1], replace=TRUE)
-		boot_data 			<- data[boot_idx,]
-		test_idx 			<- setdiff(1:dim(data)[1], boot_idx)
-		test_data 			<- data[test_idx,]
-		mdl_boot 			<- results_model(method = method, data = boot_data, train_control = tcBoot,
-									 tunegrid= grid_total, test_data = test_data, model_name = model_name)
+		ncoefs = 0
+		while (ncoefs != 24){
+			model_est_boot[k,1] <- k
+			boot_idx 			<- sample(dim(data)[1], replace=TRUE)
+			boot_data 			<- data[boot_idx,]
+			test_idx 			<- setdiff(1:dim(data)[1], boot_idx)
+			test_data 			<- data[test_idx,]
+			mdl_boot 			<- results_model(method = method, data = boot_data, train_control = tcBoot,
+												 tunegrid= grid_total, test_data = test_data, model_name = model_name)
+			ncoefs = length(data.frame(as.matrix(coef(mdl_boot[[1]]$finalModel, mdl_boot[[1]]$bestTune$lambda)))$s1)
+		}
 
 		if (method == 'glmnet'){
 			model_est_boot[k,2:4] 	<- mdl_boot[[2]][1,2:4]
 			model_est_boot[k,5] 	<- mdl_boot[[1]]$bestTune$alpha
 			model_est_boot[k,6] 	<- mdl_boot[[1]]$bestTune$lambda
+
+			if (k == 1) { # create a matrix to fill at every iteration
+				temp_estimates 		<- c('(Intercept)', mdl_boot[[1]]$coefnames)
+				est_boot			<- as.data.frame(matrix(ncol=length(temp_estimates), nrow =nboot))
+				colnames(est_boot)	<- temp_estimates
+			}
+			est_boot[k,] <- data.frame(as.matrix(coef(mdl_boot[[1]]$finalModel, mdl_boot[[1]]$bestTune$lambda)))$s1
+
 		} else {
 			model_est_boot[k,2:4] 	<- mdl_boot[[2]][1,2:4]
 		}
 	}
 	options(warn=0)
 	close(pb)
-	return (model_est_boot)
+	return (list(model_est_boot, est_boot))
 }
 
