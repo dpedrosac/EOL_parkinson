@@ -99,7 +99,11 @@ results_bootstrap <- function(method, data, test_data, model_name, nboot) {
 			test_data 			<- data[test_idx,]
 			mdl_boot 			<- results_model(method = method, data = boot_data, train_control = tcBoot,
 												 tunegrid= grid_total, test_data = test_data, model_name = model_name)
-			ncoefs = length(data.frame(as.matrix(coef(mdl_boot[[1]]$finalModel, mdl_boot[[1]]$bestTune$lambda)))$s1)
+			if (method == 'glmnet'){
+				ncoefs <- length(data.frame(as.matrix(coef(mdl_boot[[1]]$finalModel, mdl_boot[[1]]$bestTune$lambda)))$s1)
+			} else {
+				ncoefs <- 24
+			}
 		}
 
 		if (method == 'glmnet'){
