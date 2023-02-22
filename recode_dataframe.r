@@ -438,7 +438,7 @@ eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage *
 # ========================================================================================================================= #
 # 20. # Principal component of disease severity:
 
-pca_severity = c("UPDRS_sum", "Hoehn_Yahr", "LEDD")
+pca_severity = c("updrs_sum", "Hoehn_Yahr", "LEDD")
 flag = FALSE
 if (flag){
 	correlation_matrix <- cor(eol_dataframe  %>% select(all_of(pca_severity)), method="spearman")

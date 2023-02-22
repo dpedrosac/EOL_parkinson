@@ -1,9 +1,9 @@
 # This is code to run analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
-# Version 2.0 # 2023-02-08, finalised the tests for the preferred place of death analysis
+# Version 2.1 # 2023-02-23, new data matrix with some input errors added. Removed minor mistakes from code.
 
-## First specify the packages of interest
+## First, specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot", "gridExtra",
 			 "psych", "DescTools", "jtools", "rstatix", "ggpubr", "dplyr", "precrec", "MLmetrics")
 source("load_packages.r") 							# all defined [packages] are loaded - helper file
@@ -27,7 +27,7 @@ setwd(wdir)
 
 # ==================================================================================================
 # Read data from excel spreadsheet
-eol_dataframe 	<- read_xlsx(file.path(data_dir, "Matrix_EOL_PD_.xlsx"))
+eol_dataframe 	<- read_xlsx(file.path(data_dir, "Matrix_EOL_PD.v1.2.xlsx"))
 
 # Read and convert coding/explanations from xlsx-file
 dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations")
@@ -37,16 +37,13 @@ dataframe_codes_clean <- dataframe_codes %>%
 
 
 # ==================================================================================================
-# Recode variables
-source("recode_dataframe.r") 	# data is recoded and structured according to labels
-eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] = NA 								# Outliers removed!
-eol_dataframe$cat.education[eol_dataframe$cat.education=='Other'] = NA 						# Subj. claiming 'Other' discarded!
-eol_dataframe$professional_education[eol_dataframe$professional_education=='other'] = NA 	# Subj. claiming 'Other' discarded!
-
-
-# ==================================================================================================
-# Recode variables
+# Summarise questionnaires and recode variables
 source("summarise_questionnaires.r")  			# questionnaires (UPDRS, PDQ, MoCA)
+source("recode_dataframe.r") 	# data is recoded and structured according to labels
+eol_dataframe$Cohabitation <- as.numeric(eol_dataframe$Cohabitation)
+eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] = NA 								# Outliers removed!
+eol_dataframe$cat.education[eol_dataframe$cat.education=='other'] = NA 						# Subj. claiming 'Other' discarded!
+eol_dataframe$professional_education[eol_dataframe$professional_education=='other'] = NA 	# Subj. claiming 'Other' discarded!
 
 
 # ==================================================================================================
@@ -70,7 +67,7 @@ catVars <- c(	"gender", "german", "cat.marital_status", "religious_affiliation",
 				 "cat.prefered_place_of_care", "cat.prefered_place_of_death", "cat.pod_family_friends",
 				 "cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "Hoehn_Yahr")
 
-NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","UPDRS_sum", "bdi_score", "MOCA_score",
+NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","updrs_sum", "bdi_score", "MOCA_score",
 				 "Charlson_withoutage","Charlson_withage", "Cohabitation")
 
 tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars)
@@ -177,7 +174,7 @@ fig2c <- print_AUC(mdl_pen[[1]], test_data = test_data, annotation = annotation_
 # ==================================================================================================
 # Bootstrap confidence intervals for the models
 
-file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrap.v2.0.Rdata")
+file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrap.v2.1.Rdata")
 
 if (!file.exists(file2save_bootstrap)){ # loads data if existent
 	nboot = 1000

@@ -36,8 +36,7 @@ updrs_temp <- eol_dataframe %>% select(updrs_I, updrs_II, updrs_III, updrs_IV) %
 
 # Replace the values in the "updrs_sum" column with the new values and rename the column to "updrs_total"
 eol_dataframe <- eol_dataframe %>% 
-  mutate(updrs_sum = updrs_temp) %>% 
-  rename(updrs_total = updrs_sum)
+  mutate(updrs_sum = updrs_temp)
 
 moca_temp <- eol_dataframe %>% select(matches("^MOCA")) %>% 
   select(-matches("score")) %>% 
