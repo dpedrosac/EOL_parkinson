@@ -64,9 +64,9 @@ factor.prefered_place_of_care <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.prefered_place_of_care = factor(prefered_place_of_care, levels = as.factor(factor.prefered_place_of_care$row_number)))  %>%
   mutate(home_care = fct_collapse(as.factor(prefered_place_of_care),
-								  "home" = c("0", "5"),
-								  "institution" = c("1", "2", "4"),
-								  "other" = c("3", "6")))
+								  "home" = c("0", "4"),
+								  "institution" = c("1", "2", "3"),
+								  "other" = c("5", "6")))
 levels(eol_dataframe$cat.prefered_place_of_care) = as.factor(factor.prefered_place_of_care$.)
 
 #  Because of multicollinearity, this value had to be change home_care: yes vs. no to three factors (home, institution, other)

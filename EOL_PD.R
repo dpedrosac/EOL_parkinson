@@ -1,11 +1,10 @@
-# This is code to run analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
 # Version 2.1 # 2023-02-23, new data matrix with some input errors added. Removed minor mistakes from code.
 
 ## First, specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot", "gridExtra",
-			 "psych", "DescTools", "jtools", "rstatix", "ggpubr", "dplyr", "precrec", "MLmetrics")
+			 "psych", "DescTools", "jtools", "rstatix", "ggpubr", "dplyr", "precrec", "MLmetrics", "labelled")
 source("load_packages.r") 							# all defined [packages] are loaded - helper file
 source("functionsUsed.R")
 
@@ -36,8 +35,12 @@ dataframe_codes_clean <- dataframe_codes %>%
 	select(-Unit)  								# Drop the "Unit" column
 
 
+# This is code to run analyses for the palliative care project;
 # ==================================================================================================
 # Summarise questionnaires and recode variables
+eol_dataframe$marital_status[eol_dataframe$marital_status==2] = 1			# merged
+eol_dataframe$marital_status[eol_dataframe$marital_status==4] = 3			# merged
+
 source("summarise_questionnaires.r")  			# questionnaires (UPDRS, PDQ, MoCA)
 source("recode_dataframe.r") 	# data is recoded and structured according to labels
 eol_dataframe$Cohabitation <- as.numeric(eol_dataframe$Cohabitation)
@@ -49,32 +52,56 @@ eol_dataframe$professional_education[eol_dataframe$professional_education=='othe
 # ==================================================================================================
 # Create TableOne with all data
 
-allVars <- c(	"gender", "age", "age_at_diagnosis", "duration", "marital_status", "cat.education",
+allVars <- c(	"gender", "age", "duration", "cat.marital_status", "cat.education",
 				 "religious_affiliation", "cat.independent_living", "Cohabitation", "cat.nursing_support",
-				 "cat.residential_location", "cat.education", "cat.advance_directive", "cat.power_attorney",
-				 "cat.palliative_care_knowledge", "cat.hospice_knowledge", "cat.thoughts_EOLwishes",
-				 "Sharing_of_thoughts", "Thoughts_dicussed_with",
-				 "asked_about_end_of_life_wishes", "asked_by_whom", "cat.prefered_place_of_care",
-				 "cat.prefered_place_of_death", "cat.pod_family_friends", "cat.pod_GP", "cat.pod_neurologist",
-				 "cat.pod_AD", "LEDD", "Hoehn_Yahr", "PDQ_score", "UPDRS_sum", "bdi_score", "MOCA_score",
-				 "Charlson_withoutage", "Charlson_withage")
+				 "cat.residential_location", "cat.advance_directive", "cat.power_attorney",
+				 "cat.palliative_care_knowledge", "cat.hospice_knowledge",
+				 "cat.prefered_place_of_care", "pod.family_friends",
+				 "pod.GP", "pod.neurologist", "pod.AD", "LEDD", "Hoehn_Yahr", "PDQ_score",
+				 "updrs_sum", "bdi_score", "MOCA_score", "Charlson_withage")
 
-catVars <- c(	"gender", "german", "cat.marital_status", "religious_affiliation",
-				 "cat.independent_living", "cat.nursing_support", "cat.residential_location", "cat.education",
+catVars <- c(	"gender", "cat.marital_status", "cat.education", "religious_affiliation",
+				 "cat.independent_living", "cat.nursing_support", "cat.residential_location",
 				 "cat.advance_directive", "cat.power_attorney", "cat.palliative_care_knowledge",
-				 "cat.hospice_knowledge", "cat.thoughts_EOLwishes", "Sharing_of_thoughts",
-				 "Thoughts_dicussed_with", "asked_about_end_of_life_wishes", "asked_by_whom",
-				 "cat.prefered_place_of_care", "cat.prefered_place_of_death", "cat.pod_family_friends",
-				 "cat.pod_GP", "cat.pod_neurologist", "cat.pod_AD", "Hoehn_Yahr")
+				 "cat.hospice_knowledge", "cat.prefered_place_of_care", "pod.family_friends",
+				 "pod.GP", "pod.neurologist", "pod.AD", "Hoehn_Yahr")
 
-NumVars <- c(	"age", "age_at_diagnosis", "duration", "LEDD", "PDQ_score","updrs_sum", "bdi_score", "MOCA_score",
-				 "Charlson_withoutage","Charlson_withage", "Cohabitation")
+NumVars <- c(	"age", "duration", "Cohabitation", "LEDD", "PDQ_score","updrs_sum",
+				 "bdi_score", "MOCA_score", "Charlson_withage")
 
-tab2 <- CreateTableOne(vars = allVars, data = eol_dataframe, factorVars = catVars)
-print(tab2)
-write.csv(print(tab2, quote = FALSE,
-				noSpaces = TRUE, printToggle = FALSE, showAllLevels = TRUE),
+var_label_list <- list(gender = "Male",
+                       age = "Age, years",
+                       duration = "Time since diagnosis, years",
+                       cat.marital_status = "Marital status",
+                       spiders = "Spider angioma",
+                       edema = "Edema",
+                       bili = "Serum bilirunbin, mg/dl",
+                       chol = "Serum cholesterol, mg/dl",
+                       copper = "Urine copper ug/day",
+                       stage = "Histologic stage of disease",
+                       trig = "Triglycerides, mg/dl",
+                       albumin = "Serum albumin, g/dl",
+                       alk.phos = "Alkaline phosphotase, U/liter",
+                       ast = "Aspartate aminotransferase, U/ml",
+                       platelet = "Platelet count",
+                       protime = "Prothrombin time in seconds")
+# labelled::var_label(pbc) <- var_label_list #TODO: at the end, all variables of table one [eol_dataframe] should be renamed here
+# labelled::var_label(pbc)
+
+tab1 <- CreateTableOne(vars = allVars, strata = c("home_death"),
+					   data = eol_dataframe,
+					   factorVars = catVars, addOverall = TRUE)
+print(tab1)
+write.csv(print(tab1, quote = FALSE, test=FALSE, contDigits = 1,
+				noSpaces = TRUE, printToggle = FALSE, showAllLevels = FALSE),
 		  file = file.path(wdir, "results", "table1_demographicsEOL.csv"))
+
+tab1mod <- CreateTableOne(vars = allVars, #c(setdiff(allVars, 'cat.prefered_place_of_care'), 'cat.prefered_place_of_death'),
+						  strata = c("home_care"),
+						  data = eol_dataframe, factorVars = catVars, addOverall = FALSE)
+write.csv(print(tab1mod, quote = FALSE, test=FALSE, contDigits = 1,
+				noSpaces = TRUE, printToggle = FALSE, showAllLevels = FALSE),
+		  file = file.path(wdir, "results", "table1_demographicsEOLmod.csv"))
 
 
 # ==================================================================================================
