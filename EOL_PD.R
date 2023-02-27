@@ -29,7 +29,7 @@ setwd(wdir)
 eol_dataframe 	<- read_xlsx(file.path(data_dir, "Matrix_EOL_PD.v1.2.xlsx"))
 
 # Read and convert coding/explanations from xlsx-file
-dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD_.xlsx"), sheet = "explanations")
+dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD.v1.2.xlsx"), sheet = "explanations")
 dataframe_codes_clean <- dataframe_codes %>%
 	drop_na(starts_with("0")) %>% 				# Remove rows with NAs in columns 3 and beyond
 	select(-Unit)  								# Drop the "Unit" column
@@ -281,7 +281,7 @@ ggplot(stack(data2plot), aes(x = ind, y = values)) +
 dev.off()
 
 # ==================================================================================================
-# Create table for penalized reduced model
+# Create table for penalized reduced model - HOMEDEATH
 mdl_pen_final 	<- mdl_penHOMEDEATH[[1]]
 coefs <- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$bestTune$lambda)))
 sig_predictors 	<- which(coefs != 0)
@@ -297,7 +297,7 @@ write.csv(mdl_pen_sig, file.path(wdir, "results", "table2.ResultsElasticNet_mode
 
 
 # ==================================================================================================
-# Create table for stepwise reduced model
+# Create table for stepwise reduced model  - HOMEDEATH
 mdl_step_final 	<- mdl_stepHOMEDEATH[[1]]
 # sig_predictors 	<- attr(which(summary(mdl_step_final)$coef[,4] <= .05), "names")
 mdl_step_sig 	<- data.frame(summary(mdl_step_final)$coef)
@@ -457,15 +457,13 @@ dev.off()
 
 # ==================================================================================================
 # Plot confidence intervals from the penalised model for all factors - HOMECARE
-pdf(file = file.path(wdir, "results", "Figure2.coefsBootstrapPenalisedModelHOMECARE.v1.0.pdf"))
+pdf(file = file.path(wdir, "results", "Figure4.coefsBootstrapPenalisedModelHOMECARE.v1.0.pdf"))
 idx_CIpen <- rownames(coefs)[which(coefs!=0)]
 colnames(CI_pen[[2]]) <- names_predictors
 data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
-colnames(data2plot) <- c(	"Disease duration", "Religious affiliation",
-							"Receiving informal \n nursingsupport",
-							 "Often end of life \nwishes or thoughts",
-							 "Prefered place \nof care in an \ninstitution",
-						 	"Prefered place \nof care at \nother place")
+colnames(data2plot) <- c(	"Married",
+							 "Prefered place \nof death at \nhome",
+							"Charlson comorbidity\n index (including age)")
 ggplot(stack(data2plot), aes(x = ind, y = values)) +
 	geom_boxplot() +
 	ylim(c(-2,2)) +
@@ -475,10 +473,37 @@ ggplot(stack(data2plot), aes(x = ind, y = values)) +
 		y = "",
 		x = "",
 		fill = NULL,
-		title = "Bootstrapped coefficients for the penalised\n regression model (ElasticNet) \nDependent variable: Home death ",
+		title = "Bootstrapped coefficients for the penalised\n regression model (ElasticNet) \nDependent variable: Home care ",
 		caption = "") +
 	#stat_summary(fun.y="median", colour="red", geom="text", show_guide = FALSE, position = position_dodge(width = .75),
 	#       aes( label=round(..y.., digits=2)))
 	theme(plot.title = element_text(size=22)) +
 	scale_fill_brewer(palette = 1)
 dev.off()
+
+
+# ==================================================================================================
+# Create table for penalized reduced model - HOMECARE
+mdl_pen_final 	<- mdl_penHOMECARE[[1]]
+coefs <- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$bestTune$lambda)))
+sig_predictors 	<- which(coefs != 0)
+mdl_pen_sig 	<- data.frame(predictor =
+								 c(	"(Intercept)", "Married",
+							 		"Prefered place \nof death at \nhome",
+									"Charlson comorbidity\n index (including age)"),
+								 coef=coefs[sig_predictors,])
+write.csv(mdl_pen_sig, file.path(wdir, "results", "table4.ResultsElasticNet_modelHOMECARE.v1.0.csv"),
+		  row.names = T) # csv-file may be easily imported into text processing software
+
+
+# ==================================================================================================
+# Create table for stepwise reduced model  - HOMECARE
+mdl_step_final 	<- mdl_stepHOMECARE[[1]]
+# sig_predictors 	<- attr(which(summary(mdl_step_final)$coef[,4] <= .05), "names")
+mdl_step_sig 	<- data.frame(summary(mdl_step_final)$coef)
+sig_predictors <- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
+mdl_step_sig 	<- mdl_step_sig[sig_predictors, ]
+rownames(mdl_step_sig) <- c("(Intercept)", "Married", "Prefered place \nof death at \nhome")
+write.csv(mdl_step_sig, file.path(wdir, "results", "table5.ResultsStepWiseReduced_modelHOMEDEATH.v1.0.csv"),
+		  row.names = T) # csv-file may be easily imported into text processing software
+
