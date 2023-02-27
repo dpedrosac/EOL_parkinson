@@ -22,8 +22,9 @@
 # 16. POD_AD
 # 17. Thoughts_about_end_of_life_wishes
 # 18. People to which pod has been communicated 
-# 19. Charlson comorbidity index 
-# 20. Principal component of disease severity?
+# 19. Charlson comorbidity index
+# 20. Cohabitation
+# 21. Principal component of disease severity?
 
 
 # ========================================================================================================================= #
@@ -44,7 +45,7 @@ factor.prefered_place_of_death <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.prefered_place_of_death = factor(prefered_place_of_death, levels = as.factor(factor.prefered_place_of_death$row_number)))  %>%
   mutate(home_death = ifelse(prefered_place_of_death == "0", "yes", "no"))
-levels(eol_dataframe$cat.prefered_place_of_death) = as.factor(factor.prefered_place_of_death$.)
+levels(eol_dataframe$cat.prefered_place_of_death) <- as.factor(factor.prefered_place_of_death$.)
 
 # ========================================================================================================================= #
 # 2. Place of care 
@@ -67,7 +68,12 @@ eol_dataframe <- eol_dataframe %>%
 								  "home" = c("0", "4"),
 								  "institution" = c("1", "2", "3"),
 								  "other" = c("5", "6")))
-levels(eol_dataframe$cat.prefered_place_of_care) = as.factor(factor.prefered_place_of_care$.)
+levels(eol_dataframe$cat.prefered_place_of_care) <- as.factor(factor.prefered_place_of_care$.)
+
+eol_dataframe <- eol_dataframe %>%
+ mutate(home_careBINARY = ifelse(prefered_place_of_care == "0", "yes", "no")) # original line
+eol_dataframe$home_careBINARY <- as.factor(eol_dataframe$home_careBINARY)
+
 
 #  Because of multicollinearity, this value had to be change home_care: yes vs. no to three factors (home, institution, other)
 #   mutate(home_care = ifelse(prefered_place_of_care == "0", "yes", "no")) # original line
@@ -89,7 +95,7 @@ factor.religious_affiliation <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.religious_affiliation = factor(religion_belief_worldview, levels = as.factor(factor.religious_affiliation$row_number)))  %>%
   mutate(religious_affiliation = ifelse(religion_belief_worldview == "8", "no", "yes"))
-levels(eol_dataframe$cat.religious_affiliation) = as.factor(factor.religious_affiliation$.)
+levels(eol_dataframe$cat.religious_affiliation) <- as.factor(factor.religious_affiliation$.)
 
 # ========================================================================================================================= #
 # 4. Nationality 
@@ -109,7 +115,7 @@ factor.nationality <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.nationality = factor(nationality, levels = as.factor(factor.nationality$row_number)))  %>%
   mutate(german = ifelse(nationality == "0", "yes", "no"))
-levels(eol_dataframe$cat.nationality) = as.factor(factor.nationality$.)
+levels(eol_dataframe$cat.nationality) <- as.factor(factor.nationality$.)
 
 # ========================================================================================================================= #
 # 5. Marital status 
@@ -129,7 +135,10 @@ factor.marital_status <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.marital_status = factor(marital_status, levels = as.factor(factor.marital_status$row_number))) %>%
   mutate(married = fct_collapse(as.factor(marital_status), "no" = c("0", "3", "4", "5"), "yes" = c("1", "2"))) 
-levels(eol_dataframe$cat.marital_status) = as.factor(factor.marital_status$.)
+levels(eol_dataframe$cat.marital_status) <- as.factor(factor.marital_status$.)
+
+eol_dataframe$marital_status[eol_dataframe$marital_status==2] <- 1			# merged
+eol_dataframe$marital_status[eol_dataframe$marital_status==4] <- 3			# merged
 
 # ========================================================================================================================= #
 # 6. Housing situation 
@@ -149,7 +158,7 @@ factor.housing_situation <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.independent_living = factor(Housing_situation, levels = as.factor(factor.housing_situation$row_number)))  %>%
   mutate(independent_living = ifelse(Housing_situation == "0", "yes", "no"))
-levels(eol_dataframe$cat.independent_living) = as.factor(factor.housing_situation$.)
+levels(eol_dataframe$cat.independent_living) <- as.factor(factor.housing_situation$.)
 
 # ========================================================================================================================= #
 # 7. Education 
@@ -172,7 +181,9 @@ eol_dataframe <- eol_dataframe %>%
 											   										"1" = c("1"),
       																				"2" = c("2", "3"),
       																				"other" = c("4")))
-levels(eol_dataframe$cat.education) = as.factor(factor.education$.)
+levels(eol_dataframe$cat.education) <- as.factor(factor.education$.)
+eol_dataframe$cat.education[eol_dataframe$cat.education=='other'] <- NA 						# Subj. claiming 'Other' discarded!
+eol_dataframe$professional_education[eol_dataframe$professional_education=='other'] <- NA 	# Subj. claiming 'Other' discarded!
 
 # ========================================================================================================================= #
 # 8. Residential location #QUERY: There are some subjects coded as "4" which doesn't appear in the codes!
@@ -197,7 +208,7 @@ eol_dataframe <- eol_dataframe %>%
 																		"yes" = c("3"),
        																	"yes" = c("4")))
 
-levels(eol_dataframe$cat.residential_location) = as.factor(factor.residential_location$.)
+levels(eol_dataframe$cat.residential_location) <- as.factor(factor.residential_location$.)
 
 # ========================================================================================================================= #
 # 9. Knowledge about palliative care
@@ -217,7 +228,7 @@ factor.palliative_care_knowledge <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.palliative_care_knowledge = factor(palliative_care_knowledge, levels = as.factor(factor.palliative_care_knowledge$row_number)))  %>%
   mutate(informed_about_palliative_care = ifelse(palliative_care_knowledge == "0", "no", "yes"))
-levels(eol_dataframe$cat.palliative_care_knowledge) = as.factor(factor.palliative_care_knowledge$.)
+levels(eol_dataframe$cat.palliative_care_knowledge) <- as.factor(factor.palliative_care_knowledge$.)
 
 # ========================================================================================================================= #
 # 10. Knowledge about hospice
@@ -237,7 +248,7 @@ factor.hospice_knowledge <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.hospice_knowledge = factor(hospice_knowledge, levels = as.factor(factor.hospice_knowledge$row_number)))  %>%
   mutate(informed_about_hospice = ifelse(hospice_knowledge == "0", "no", "yes"))
-levels(eol_dataframe$cat.hospice_knowledge) = as.factor(factor.hospice_knowledge$.)
+levels(eol_dataframe$cat.hospice_knowledge) <- as.factor(factor.hospice_knowledge$.)
 
 # ========================================================================================================================= #
 # 11. Power of attorney 
@@ -260,7 +271,7 @@ eol_dataframe <- eol_dataframe %>%
 											   							"yes" = c("1"),
       																	"no" = c("2")))
 #                                        "maybe" = c("2")))  # being recoded as 0 in case of maybe!
-levels(eol_dataframe$cat.power_attorney) = as.factor(factor.power_of_attorney$.)
+levels(eol_dataframe$cat.power_attorney) <- as.factor(factor.power_of_attorney$.)
 
 # ========================================================================================================================= #
 # 12. Advance_directive 
@@ -283,7 +294,7 @@ eol_dataframe <- eol_dataframe %>%
 											   										"yes" = c("1"),
       																	"no" = c("2")))
 #                                        "maybe" = c("2")))  # being recoded as 0 in case of maybe!
-levels(eol_dataframe$cat.advance_directive) = as.factor(factor.advance_directive$.)
+levels(eol_dataframe$cat.advance_directive) <- as.factor(factor.advance_directive$.)
 
 # ========================================================================================================================= #
 # 13. Nursing_support 
@@ -305,7 +316,7 @@ eol_dataframe <- eol_dataframe %>%
   mutate(receiving_nursing_support = fct_collapse(as.factor(cat.nursing_support),"no" = c("0"), 
 											   										"informal" = c("1"),
       																				"formal" = c("2", "3", "4")))
-levels(eol_dataframe$cat.nursing_support) = as.factor(factor.nursing_support$.)
+levels(eol_dataframe$cat.nursing_support) <- as.factor(factor.nursing_support$.)
 
 # ========================================================================================================================= #
 # 14. POD_familiy_friends 
@@ -328,7 +339,7 @@ eol_dataframe <- eol_dataframe %>%
 											   										"yes" = c("1"),
       																	"no" = c("2")))
 #                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
-levels(eol_dataframe$cat.pod_family_friends) = as.factor(factor.pod_family_friends$.)
+levels(eol_dataframe$cat.pod_family_friends) <- as.factor(factor.pod_family_friends$.)
 
 # ========================================================================================================================= #
 # 15. POD_GP 
@@ -351,7 +362,7 @@ eol_dataframe <- eol_dataframe %>%
 											   										"yes" = c("1"),
       																	"no" = c("2")))
 #                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
-levels(eol_dataframe$cat.pod_GP) = as.factor(factor.pod_GP$.)
+levels(eol_dataframe$cat.pod_GP) <- as.factor(factor.pod_GP$.)
 
 # ========================================================================================================================= #
 # 15. POD_neurologist 
@@ -373,7 +384,7 @@ eol_dataframe <- eol_dataframe %>%
   mutate(pod.neurologist = fct_collapse(as.factor(cat.pod_neurologist),"no" = c("0"), 
 											   										"yes" = c("1"),
       																				"no" = c("2")))
-levels(eol_dataframe$cat.pod_neurologist) = as.factor(factor.pod_neurologist$.)
+levels(eol_dataframe$cat.pod_neurologist) <- as.factor(factor.pod_neurologist$.)
 
 # ========================================================================================================================= #
 # 16. POD_AD 
@@ -392,11 +403,10 @@ factor.pod_AD <- dataframe_codes %>%
 # Mutate the values in the "POD_AD" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.pod_AD = factor(POD_AD, levels = as.factor(factor.pod_AD$row_number))) %>%
-  mutate(pod.AD = fct_collapse(as.factor(cat.pod_AD),"no" = c("0"), 
-											   										"yes" = c("1"),
-      																				"no" = c("2")))
-#                                        "maybe" = c("2")))  # being recoded as no in case of maybe!
-levels(eol_dataframe$cat.pod_AD) = as.factor(factor.pod_AD$.)
+  mutate(pod.AD = fct_collapse(as.factor(cat.pod_AD),	"no" = "0",
+							   							"yes" = "1",
+      													"no" = "2"))
+levels(eol_dataframe$cat.pod_AD) <- as.factor(factor.pod_AD$.)
 
 # ========================================================================================================================= #
 # 17. thoughts_about_end_of_life_wishes 
@@ -416,9 +426,9 @@ factor.thoughts_EOLwishes <- dataframe_codes %>%
 eol_dataframe <- eol_dataframe %>%
   mutate(cat.thoughts_EOLwishes = factor(thoughts_about_end_of_life_wishes, levels = as.factor(factor.thoughts_EOLwishes$row_number))) %>%
   mutate(oftenEOLwishes_thoughts = fct_collapse(as.factor(cat.thoughts_EOLwishes),
-                                               	"no" = c("0"),
+                                               	"no" = "0",
 												"yes" = c("1", "2", "3", "4")))
-levels(eol_dataframe$cat.thoughts_EOLwishes) = as.factor(factor.thoughts_EOLwishes$.)
+levels(eol_dataframe$cat.thoughts_EOLwishes) <- as.factor(factor.thoughts_EOLwishes$.)
 
 # ========================================================================================================================= #
 # 18. People to which pod has been communicated 
@@ -434,12 +444,17 @@ eol_dataframe$total_pod <- df_temp$total_pod
 
 eol_dataframe <- eol_dataframe  %>% mutate(CCI = .983^exp(1)^(Charlson_withage * .9))
 
+# ========================================================================================================================= #
+# 20. Cohabitation
+
+eol_dataframe$Cohabitation <- as.numeric(eol_dataframe$Cohabitation)
+eol_dataframe$Cohabitation[eol_dataframe$Cohabitation>6] <- NA 								# Outliers removed!
 
 # ========================================================================================================================= #
-# 20. # Principal component of disease severity:
+# 21. # Principal component of disease severity:
 
-pca_severity = c("updrs_sum", "Hoehn_Yahr", "LEDD")
-flag = FALSE
+pca_severity <- c("updrs_sum", "Hoehn_Yahr", "LEDD")
+flag <- FALSE
 if (flag){
 	correlation_matrix <- cor(eol_dataframe  %>% select(all_of(pca_severity)), method="spearman")
 	corrplot(correlation_matrix) # plot correlation coefficients
@@ -451,3 +466,4 @@ df_temp_transformed <- pca$x
 vars_transformed <- apply(df_temp_transformed, 2, var)
 vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
 eol_dataframe$disease_severityPC <- c(pca$x[,1])
+
