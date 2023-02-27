@@ -253,7 +253,7 @@ ggplot(stack(CI_pen[[2]]), aes(x = ind, y = values)) +
 dev.off()
 
 # ==================================================================================================
-# Plot confidence intervals from the penalised model for all factors
+# Plot confidence intervals from the penalised model for all factors - HOMEDEATH
 pdf(file = file.path(wdir, "results", "Figure2.coefsBootstrapPenalisedModelHOMEDEATH.v1.0.pdf"))
 idx_CIpen <- rownames(coefs)[which(coefs!=0)]
 colnames(CI_pen[[2]]) <- names_predictors
@@ -452,4 +452,33 @@ ggplot(stack(CI_pen[[2]]), aes(x = ind, y = values)) +
 	theme(plot.title = element_text(size=22)) +
 	scale_color_brewer(palette = 1) +
 	ylim(c(-2,2))
+dev.off()
+
+
+# ==================================================================================================
+# Plot confidence intervals from the penalised model for all factors - HOMECARE
+pdf(file = file.path(wdir, "results", "Figure2.coefsBootstrapPenalisedModelHOMECARE.v1.0.pdf"))
+idx_CIpen <- rownames(coefs)[which(coefs!=0)]
+colnames(CI_pen[[2]]) <- names_predictors
+data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
+colnames(data2plot) <- c(	"Disease duration", "Religious affiliation",
+							"Receiving informal \n nursingsupport",
+							 "Often end of life \nwishes or thoughts",
+							 "Prefered place \nof care in an \ninstitution",
+						 	"Prefered place \nof care at \nother place")
+ggplot(stack(data2plot), aes(x = ind, y = values)) +
+	geom_boxplot() +
+	ylim(c(-2,2)) +
+	scale_x_discrete(labels = colnames(data2plot)) +
+	theme_minimal() +
+	labs(
+		y = "",
+		x = "",
+		fill = NULL,
+		title = "Bootstrapped coefficients for the penalised\n regression model (ElasticNet) \nDependent variable: Home death ",
+		caption = "") +
+	#stat_summary(fun.y="median", colour="red", geom="text", show_guide = FALSE, position = position_dodge(width = .75),
+	#       aes( label=round(..y.., digits=2)))
+	theme(plot.title = element_text(size=22)) +
+	scale_fill_brewer(palette = 1)
 dev.off()
