@@ -436,7 +436,7 @@ pdf(file	<- file.path(wdir, "results", "Suppl.Figure1.coefsBootstrapHOMECARE.v1.
 coefs 		<- data.frame(as.matrix(coef(mdl_penHOMECARE[[1]]$finalModel,
 								  mdl_penHOMECARE[[1]]$bestTune$lambda))) # extracts all coefficients from the  penalised model with all data
 CIpen2plot <- CI_pen[[2]] %>% drop_na() %>% select(2:dim(CI_pen[[2]])[2])
-r = colSums(CIpen2plot == 0)
+# r = colSums(CIpen2plot == 0)
 names_predictors <- colnames(CI_pen[[2]]) 		# extracts the predictors to plot later as a sort of "legend"
 colnames(CI_pen[[2]]) <- 1:length(CI_pen[[2]])  # replaces predictors with numbers to make plot easier to read
 ggplot(stack(CI_pen[[2]]), aes(x = ind, y = values)) +
