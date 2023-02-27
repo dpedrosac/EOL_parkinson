@@ -432,12 +432,12 @@ plot_results_withCI(CI_full, CI_step, CI_pen, "Home Care", "Figure3.model_compar
 
 # ==================================================================================================
 # Plot confidence intervals from the penalised model for all factors
-pdf(file	<- file.path(wdir, "results", "Suppl.Figure1.coefsBootstrapHOMECARE.v1.0.pdf"))
-coefs 		<- data.frame(as.matrix(coef(mdl_penHOMECARE[[1]]$finalModel,
+pdf(file		<- file.path(wdir, "results", "Suppl.Figure1.coefsBootstrapHOMECARE.v1.0.pdf"))
+coefs 			<- data.frame(as.matrix(coef(mdl_penHOMECARE[[1]]$finalModel,
 								  mdl_penHOMECARE[[1]]$bestTune$lambda))) # extracts all coefficients from the  penalised model with all data
-CIpen2plot <- CI_pen[[2]] %>% drop_na() %>% select(2:dim(CI_pen[[2]])[2])
+CIpen2plot 		<- CI_pen[[2]] %>% drop_na() %>% select(2:dim(CI_pen[[2]])[2])
 # r = colSums(CIpen2plot == 0)
-names_predictors <- colnames(CI_pen[[2]]) 		# extracts the predictors to plot later as a sort of "legend"
+names_predictors<- colnames(CI_pen[[2]]) 		# extracts the predictors to plot later as a sort of "legend"
 colnames(CI_pen[[2]]) <- 1:length(CI_pen[[2]])  # replaces predictors with numbers to make plot easier to read
 ggplot(stack(CI_pen[[2]]), aes(x = ind, y = values)) +
 	geom_boxplot() +
@@ -458,12 +458,12 @@ dev.off()
 # ==================================================================================================
 # Plot confidence intervals from the penalised model for all factors - HOMECARE
 pdf(file = file.path(wdir, "results", "Figure4.coefsBootstrapPenalisedModelHOMECARE.v1.0.pdf"))
-idx_CIpen <- rownames(coefs)[which(coefs!=0)]
-colnames(CI_pen[[2]]) <- names_predictors
-data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
-colnames(data2plot) <- c(	"Married",
-							 "Prefered place \nof death at \nhome",
-							"Charlson comorbidity\n index (including age)")
+idx_CIpen 				<- rownames(coefs)[which(coefs!=0)]
+colnames(CI_pen[[2]]) 	<- names_predictors
+data2plot 				<- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
+colnames(data2plot) 	<- c(	"Married",
+							 	"Prefered place \nof death at \nhome",
+								"Charlson comorbidity\n index (including age)")
 ggplot(stack(data2plot), aes(x = ind, y = values)) +
 	geom_boxplot() +
 	ylim(c(-2,2)) +
@@ -485,7 +485,7 @@ dev.off()
 # ==================================================================================================
 # Create table for penalized reduced model - HOMECARE
 mdl_pen_final 	<- mdl_penHOMECARE[[1]]
-coefs <- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$bestTune$lambda)))
+coefs 			<- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$bestTune$lambda)))
 sig_predictors 	<- which(coefs != 0)
 mdl_pen_sig 	<- data.frame(predictor =
 								 c(	"(Intercept)", "Married",
@@ -498,12 +498,12 @@ write.csv(mdl_pen_sig, file.path(wdir, "results", "table4.ResultsElasticNet_mode
 
 # ==================================================================================================
 # Create table for stepwise reduced model  - HOMECARE
-mdl_step_final 	<- mdl_stepHOMECARE[[1]]
-# sig_predictors 	<- attr(which(summary(mdl_step_final)$coef[,4] <= .05), "names")
-mdl_step_sig 	<- data.frame(summary(mdl_step_final)$coef)
-sig_predictors <- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
-mdl_step_sig 	<- mdl_step_sig[sig_predictors, ]
-rownames(mdl_step_sig) <- c("(Intercept)", "Married", "Prefered place \nof death at \nhome")
+mdl_step_final 			<- mdl_stepHOMECARE[[1]]
+# sig_predictors 		<- attr(which(summary(mdl_step_final)$coef[,4] <= .05), "names")
+mdl_step_sig 			<- data.frame(summary(mdl_step_final)$coef)
+sig_predictors 			<- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
+mdl_step_sig 			<- mdl_step_sig[sig_predictors, ]
+rownames(mdl_step_sig) 	<- c("(Intercept)", "Married", "Prefered place \nof death at \nhome")
 write.csv(mdl_step_sig, file.path(wdir, "results", "table5.ResultsStepWiseReduced_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
 
