@@ -11,7 +11,6 @@
 # Generic {caret}-formula, which may be used for all models w/ different input
 
 results_modelHOMEDEATH <- function(method, data, train_control, tunegrid, test_data, model_name) {
-
 	mdl_caret 			<- train(as.formula(paste( 'home_death', '~', '.')),
 								  data=data,
 								  method = method,

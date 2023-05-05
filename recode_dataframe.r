@@ -1,10 +1,10 @@
 # This is code recodes and sorts all factors to run all analyses for the palliative care project;
 # Code developed by Anna and David Pedrosa
 
-# Version 1.0 # 2023-01-02, first commit
+# Version 1.0 # 2023-01-02, minor changes due to typos
 
 # Recoded variables:
-# 1. Prefered place of death
+# 1. Preferred place of death
 # 2. Place of care 
 # 3. Religious affilitaion 
 # 4. Nationality 
@@ -28,55 +28,55 @@
 
 
 # ========================================================================================================================= #
-# 1. Prefered place of death
+# 1. Preferred place of death
 row_temp <- dataframe_codes %>%
-  filter(Factor == "prefered_place_of_death") %>% select(-c(Unit, Factor))
+  filter(Factor == "preferred_place_of_death") %>% select(-c(Unit, Factor))
 
 # Extract the row, flatten the matrix into a vector, and remove the NAs
-factor.prefered_place_of_death <- dataframe_codes %>%
-  filter(Factor == "prefered_place_of_death") %>% 
+factor.preferred_place_of_death <- dataframe_codes %>%
+  filter(Factor == "preferred_place_of_death") %>%
   select(-c(Unit, Factor)) %>% 
   unlist(t(as.matrix(row_temp))) %>% 
   na.omit() %>% 
   data.frame() %>% 
   mutate(row_number = row_number()-1)  # Add a row number column
 
-# Mutate the values in the "prefered_place_of_death" column using the row number as the levels and recode to binary data
+# Mutate the values in the "preferred_place_of_death" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
-  mutate(cat.prefered_place_of_death = factor(prefered_place_of_death, levels = as.factor(factor.prefered_place_of_death$row_number)))  %>%
-  mutate(home_death = ifelse(prefered_place_of_death == "0", "yes", "no"))
-levels(eol_dataframe$cat.prefered_place_of_death) <- as.factor(factor.prefered_place_of_death$.)
+  mutate(cat.preferred_place_of_death = factor(preferred_place_of_death, levels = as.factor(factor.preferred_place_of_death$row_number)))  %>%
+  mutate(home_death = ifelse(preferred_place_of_death == "0", "yes", "no"))
+levels(eol_dataframe$cat.preferred_place_of_death) <- as.factor(factor.preferred_place_of_death$.)
 
 # ========================================================================================================================= #
 # 2. Place of care 
 row_temp <- dataframe_codes %>%
-  filter(Factor == "prefered_place_of_care") %>% select(-c(Unit, Factor))
+  filter(Factor == "preferred_place_of_care") %>% select(-c(Unit, Factor))
 
 # Extract the row, flatten the matrix into a vector, and remove the NAs
-factor.prefered_place_of_care <- dataframe_codes %>%
-  filter(Factor == "prefered_place_of_care") %>% 
+factor.preferred_place_of_care <- dataframe_codes %>%
+  filter(Factor == "preferred_place_of_care") %>%
   select(-c(Unit, Factor)) %>% 
   unlist(t(as.matrix(row_temp))) %>% 
   na.omit() %>% 
   data.frame() %>% 
   mutate(row_number = row_number()-1)  # Add a row number column
 
-# Mutate the values in the "prefered_place_of_care" column using the row number as the levels and recode to binary data
+# Mutate the values in the "preferred_place_of_care" column using the row number as the levels and recode to binary data
 eol_dataframe <- eol_dataframe %>%
-  mutate(cat.prefered_place_of_care = factor(prefered_place_of_care, levels = as.factor(factor.prefered_place_of_care$row_number)))  %>%
-  mutate(home_care = fct_collapse(as.factor(prefered_place_of_care),
+  mutate(cat.preferred_place_of_care = factor(preferred_place_of_care, levels = as.factor(factor.preferred_place_of_care$row_number)))  %>%
+  mutate(home_care = fct_collapse(as.factor(preferred_place_of_care),
 								  "home" = c("0", "4"),
 								  "institution" = c("1", "2", "3"),
 								  "other" = c("5", "6")))
-levels(eol_dataframe$cat.prefered_place_of_care) <- as.factor(factor.prefered_place_of_care$.)
+levels(eol_dataframe$cat.preferred_place_of_care) <- as.factor(factor.preferred_place_of_care$.)
 
 eol_dataframe <- eol_dataframe %>%
- mutate(home_careBINARY = ifelse(prefered_place_of_care == "0", "yes", "no")) # original line
+ mutate(home_careBINARY = ifelse(preferred_place_of_care == "0", "yes", "no")) # original line
 eol_dataframe$home_careBINARY <- as.factor(eol_dataframe$home_careBINARY)
 
 
 #  Because of multicollinearity, this value had to be change home_care: yes vs. no to three factors (home, institution, other)
-#   mutate(home_care = ifelse(prefered_place_of_care == "0", "yes", "no")) # original line
+#   mutate(home_care = ifelse(preferred_place_of_care == "0", "yes", "no")) # original line
 # ========================================================================================================================= #
 # 3. Religious affilitaion 
 row_temp <- dataframe_codes %>%

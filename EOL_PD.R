@@ -1,6 +1,6 @@
 # Code developed by Anna and David Pedrosa
 
-# Version 2.2 # 2023-02-26, added analyses with HOMECARE
+# Version 2.2 # 2023-05-05, removed some predictors that were incorrect, minor changes
 
 ## First, specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot", "gridExtra",
@@ -26,10 +26,10 @@ setwd(wdir)
 
 # ==================================================================================================
 # Read data from excel spreadsheet
-eol_dataframe 	<- read_xlsx(file.path(data_dir, "Matrix_EOL_PD.v1.2.xlsx"))
+eol_dataframe 	<- read_xlsx(file.path(data_dir, "Matrix_EOL_PD.v1.3.xlsx"))
 
 # Read and convert coding/explanations from xlsx-file
-dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD.v1.2.xlsx"), sheet = "explanations")
+dataframe_codes <- read_excel(file.path(data_dir, "Matrix_EOL_PD.v1.3.xlsx"), sheet = "explanations")
 dataframe_codes_clean <- dataframe_codes %>%
 	drop_na(starts_with("0")) %>% 				# Remove rows with NAs in columns 3 and beyond
 	select(-Unit)  								# Drop the "Unit" column
@@ -49,14 +49,14 @@ allVars <- c(	"gender", "age", "duration", "cat.marital_status", "cat.education"
 				 "religious_affiliation", "cat.independent_living", "Cohabitation", "cat.nursing_support",
 				 "cat.residential_location", "cat.advance_directive", "cat.power_attorney",
 				 "cat.palliative_care_knowledge", "cat.hospice_knowledge",
-				 "cat.prefered_place_of_care", "pod.family_friends",
+				 "cat.preferred_place_of_care", "pod.family_friends",
 				 "pod.GP", "pod.neurologist", "pod.AD", "LEDD", "Hoehn_Yahr", "PDQ_score",
 				 "updrs_sum", "bdi_score", "MOCA_score", "Charlson_withage")
 
 catVars <- c(	"gender", "cat.marital_status", "cat.education", "religious_affiliation",
 				 "cat.independent_living", "cat.nursing_support", "cat.residential_location",
 				 "cat.advance_directive", "cat.power_attorney", "cat.palliative_care_knowledge",
-				 "cat.hospice_knowledge", "cat.prefered_place_of_care", "pod.family_friends",
+				 "cat.hospice_knowledge", "cat.preferred_place_of_care", "pod.family_friends",
 				 "pod.GP", "pod.neurologist", "pod.AD", "Hoehn_Yahr")
 
 NumVars <- c(	"age", "duration", "Cohabitation", "LEDD", "PDQ_score","updrs_sum",
@@ -76,7 +76,7 @@ renameTab1 <- list(gender = "Male",
                        cat.power_attorney = "Power of attorney",
                        cat.palliative_care_knowledge = "Palliative care knowledge",
                        cat.hospice_knowledge = "Hospice knowledge",
-                       cat.prefered_place_of_care = "Preferred place of care",
+                       cat.preferred_place_of_care = "Preferred place of care",
                        pod.family_friends = " pPOD shared with family/friends",
                        pod.GP = "pPOD shared with GP",
                        pod.neurologist = "pPOD shared with neurologist",
@@ -96,7 +96,7 @@ write.csv(print(tab1, quote = FALSE, test=FALSE, contDigits = 1,
 				noSpaces = TRUE, printToggle = FALSE, showAllLevels = FALSE),
 		  file = file.path(wdir, "results", "table1a_demographicsEOL.csv"))
 
-tab1mod <- CreateTableOne(vars = allVars, #c(setdiff(allVars, 'cat.prefered_place_of_care'), 'cat.prefered_place_of_death'),
+tab1mod <- CreateTableOne(vars = allVars, #c(setdiff(allVars, 'cat.preferred_place_of_care'), 'cat.preferred_place_of_death'),
 						  strata = c("home_care"),
 						  data = eol_dataframe, factorVars = catVars, addOverall = FALSE)
 write.csv(print(tab1mod, quote = FALSE, test=FALSE, contDigits = 1,
@@ -124,19 +124,18 @@ stat.test.paramHOMEDEATH <- eol_dataframe %>% select(all_of(NumVars), home_death
 # Linear regression models to reduce dimensionality/extract the most meaningful predictors (HOMEDEATH)
 
 factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german", "married",
-					   "religious_affiliation","receiving_nursing_support", "rurality",
+					   "religious_affiliation","receiving_nursing_support", "rurality", # "Cohabitation",
 					   "professional_education", "existence_advance_directive", "attorney_power",
-					   "palliative_care_knowledge", "hospice_knowledge", "oftenEOLwishes_thoughts",
-					   "home_care",  																					 # only change w/ respect to HOMECARE below
+					   "palliative_care_knowledge", "hospice_knowledge", "home_care",
 					   "Charlson_withage", "PDQ_score", "bdi_score", "MOCA_score", "disease_severityPC")
 
 data_full_glmHOMEDEATH <- eol_dataframe %>% select(all_of(factors_regression), home_death) %>%
-	mutate(across(c(1,5:9, 11:16, 22), as.factor)) # convert to factors whereever needed
-data_full_glmHOMEDEATH <- data_full_glmHOMEDEATH %>%
-	mutate(across(10, as.numeric)) # convert to factors
+	mutate(across(c(1,5:15, 21), as.factor)) # convert to factors whereever needed
+# data_full_glmHOMEDEATH <- data_full_glmHOMEDEATH %>%
+# 	mutate(across(10, as.numeric)) # convert to numeric
 
-data_full_glmHOMEDEATH <- data_full_glmHOMEDEATH %>%
-	mutate(across(16, as.factor)) # convert to factors
+# data_full_glmHOMEDEATH <- data_full_glmHOMEDEATH %>%
+# 	mutate(across(16, as.factor)) # convert to factor
 data_full_glmHOMEDEATH <- droplevels(data_full_glmHOMEDEATH) %>% drop_na()
 
 # ==================================================================================================
@@ -209,7 +208,7 @@ fig99c <- print_AUC(mdl_penHOMEDEATH[[1]], test_data = test_data, annotation = a
 # ==================================================================================================
 # Bootstrap confidence intervals for the models (HOME DEATH); this takes a while and so results are saved once locally
 
-file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMEDEATH.v2.1.Rdata")
+file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMEDEATH.v2.2.Rdata")
 if (!file.exists(file2save_bootstrap)){ # loads data if existent
 	nboot = 1000
 	CI_full <- results_bootstrap(method='glm', data=data_full_glmHOMEDEATH, test_data=test_data,
@@ -261,8 +260,8 @@ data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)"
 colnames(data2plot) <- c(	"Disease duration", "Religious affiliation",
 							"Receiving informal \n nursingsupport",
 							 "Often end of life \nwishes or thoughts",
-							 "Prefered place \nof care in an \ninstitution",
-						 	"Prefered place \nof care at \nother place")
+							 "Preferred place \nof care in an \ninstitution",
+						 	"Preferred place \nof care at \nother place")
 ggplot(stack(data2plot), aes(x = ind, y = values)) +
 	geom_boxplot() +
 	ylim(c(-2,2)) +
@@ -289,8 +288,8 @@ mdl_pen_sig 	<- data.frame(predictor =
 								 c(	"(Intercept)", "Disease duration", "Religious affiliation",
 									   "Receiving informal \n nursingsupport",
 									   "Often end of life \nwishes or thoughts",
-									 	"Prefered place \nof care in an \ninstitution",
-										"Prefered place \nof care at \nother place"),
+									 	"Preferred place \nof care in an \ninstitution",
+										"Preferred place \nof care at \nother place"),
 								 coef=coefs[sig_predictors,])
 write.csv(mdl_pen_sig, file.path(wdir, "results", "table2.ResultsElasticNet_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
@@ -304,7 +303,7 @@ mdl_step_sig 	<- data.frame(summary(mdl_step_final)$coef)
 sig_predictors <- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
 mdl_step_sig 	<- mdl_step_sig[sig_predictors, ]
 rownames(mdl_step_sig) <- c("(Intercept)", "Age", "Religious affiliation", "Receiving informal support",
-							"Prefered place of care in an institution",
+							"Preferred place of care in an institution",
                             "Charlson comorbidity score including age", "PDQ-39 score")
 write.csv(mdl_step_sig, file.path(wdir, "results", "table3.ResultsStepWiseReduced_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
@@ -330,19 +329,18 @@ stat.test.paramHOMECARE <- eol_dataframe %>% select(all_of(NumVars), home_careBI
 # Linear regression models to reduce dimensionality/extract the most meaningful predictors (HOMECARE)
 
 factors_regression = c("gender", "age", "age_at_diagnosis", "duration", "german", "married",
-					   "religious_affiliation","receiving_nursing_support", "rurality",
+					   "religious_affiliation","receiving_nursing_support", "rurality", # "Cohabitation",
 					   "professional_education", "existence_advance_directive", "attorney_power",
-					   "palliative_care_knowledge", "hospice_knowledge", "oftenEOLwishes_thoughts",
-					   "home_death",  																					 # only change w/ respect to HOMEDEATH above
+					   "palliative_care_knowledge", "hospice_knowledge", "home_death",
 					   "Charlson_withage", "PDQ_score", "bdi_score", "MOCA_score", "disease_severityPC")
 
 data_full_glmHOMECARE <- eol_dataframe %>% select(all_of(factors_regression), home_careBINARY) %>%
-	mutate(across(c(1,5:9, 11:16, 22), as.factor)) # convert to factors whereever needed
-data_full_glmHOMECARE <- data_full_glmHOMECARE %>%
-	mutate(across(10, as.numeric)) # convert to factors
+	mutate(across(c(1,5:15, 21), as.factor)) # convert to factors whereever needed
+# data_full_glmHOMECARE <- data_full_glmHOMECARE %>%
+# 	mutate(across(10, as.numeric)) # convert to factors
 
-data_full_glmHOMECARE <- data_full_glmHOMECARE %>%
-	mutate(across(16, as.factor)) # convert to factors
+# data_full_glmHOMECARE <- data_full_glmHOMECARE %>%
+# 	mutate(across(16, as.factor)) # convert to factors
 data_full_glmHOMECARE <- droplevels(data_full_glmHOMECARE) %>% drop_na()
 
 
@@ -411,7 +409,7 @@ fig98c <- print_AUC(mdl_penHOMECARE[[1]], test_data = test_data, annotation = an
 # ==================================================================================================
 # Bootstrap confidence intervals for the models (HOME CARE); this takes a while and so results are saved once locally
 
-file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMECARE.v2.0.Rdata")
+file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMECARE.v2.2.Rdata")
 if (!file.exists(file2save_bootstrap)){ # loads data if existent
 	nboot = 1000
 	CI_full <- results_bootstrap(method='glm', data=data_full_glmHOMECARE, test_data=test_data,
@@ -462,7 +460,7 @@ idx_CIpen 				<- rownames(coefs)[which(coefs!=0)]
 colnames(CI_pen[[2]]) 	<- names_predictors
 data2plot 				<- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
 colnames(data2plot) 	<- c(	"Married",
-							 	"Prefered place \nof death at \nhome",
+							 	"Preferred place \nof death at \nhome",
 								"Charlson comorbidity\n index (including age)")
 ggplot(stack(data2plot), aes(x = ind, y = values)) +
 	geom_boxplot() +
@@ -489,7 +487,7 @@ coefs 			<- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$be
 sig_predictors 	<- which(coefs != 0)
 mdl_pen_sig 	<- data.frame(predictor =
 								 c(	"(Intercept)", "Married",
-							 		"Prefered place \nof death at \nhome",
+							 		"Preferred place \nof death at \nhome",
 									"Charlson comorbidity\n index (including age)"),
 								 coef=coefs[sig_predictors,])
 write.csv(mdl_pen_sig, file.path(wdir, "results", "table4.ResultsElasticNet_modelHOMECARE.v1.0.csv"),
@@ -503,7 +501,7 @@ mdl_step_final 			<- mdl_stepHOMECARE[[1]]
 mdl_step_sig 			<- data.frame(summary(mdl_step_final)$coef)
 sig_predictors 			<- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
 mdl_step_sig 			<- mdl_step_sig[sig_predictors, ]
-rownames(mdl_step_sig) 	<- c("(Intercept)", "Married", "Prefered place \nof death at \nhome")
+rownames(mdl_step_sig) 	<- c("(Intercept)", "Married", "Preferred place \nof death at \nhome")
 write.csv(mdl_step_sig, file.path(wdir, "results", "table5.ResultsStepWiseReduced_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
 
