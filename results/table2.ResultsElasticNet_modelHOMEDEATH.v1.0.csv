@@ -1,14 +1,11 @@
 "","predictor","coef"
-"1","(Intercept)",-0.360595294354425
-"2","Disease duration",-0.000730998782894689
-"3","Religious affiliation",0.100093438427855
-"4","Receiving informal 
- nursingsupport",0.0523773474388406
-"5","Often end of life 
-wishes or thoughts",-0.000796361949218705
-"6","Prefered place 
+"1","(Intercept)",-0.339283722846003
+"2","Religious affiliation",0.0756483242470781
+"3","Receiving informal 
+ nursingsupport",0.0164405211871731
+"4","Preferred place 
 of care in an 
-institution",-0.898699364472212
-"7","Prefered place 
+institution",-0.7998014376966
+"5","Preferred place 
 of care at 
-other place",-0.173121494812975
+other place",-0.0712587687404058

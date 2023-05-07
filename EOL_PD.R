@@ -257,11 +257,16 @@ pdf(file = file.path(wdir, "results", "Figure2.coefsBootstrapPenalisedModelHOMED
 idx_CIpen <- rownames(coefs)[which(coefs!=0)]
 colnames(CI_pen[[2]]) <- names_predictors
 data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)")
-colnames(data2plot) <- c(	"Disease duration", "Religious affiliation",
+# colnames(data2plot) <- c(	"Disease duration", "Religious affiliation",
+# 							"Receiving informal \n nursingsupport",
+# 							 "Often end of life \nwishes or thoughts",
+# 							 "Preferred place \nof care in an \ninstitution",
+# 						 	"Preferred place \nof care at \nother place")
+colnames(data2plot) <- c(	"Religious affiliation",
 							"Receiving informal \n nursingsupport",
-							 "Often end of life \nwishes or thoughts",
 							 "Preferred place \nof care in an \ninstitution",
 						 	"Preferred place \nof care at \nother place")
+
 ggplot(stack(data2plot), aes(x = ind, y = values)) +
 	geom_boxplot() +
 	ylim(c(-2,2)) +
@@ -284,16 +289,22 @@ dev.off()
 mdl_pen_final 	<- mdl_penHOMEDEATH[[1]]
 coefs <- data.frame(as.matrix(coef(mdl_pen_final$finalModel, mdl_pen_final$bestTune$lambda)))
 sig_predictors 	<- which(coefs != 0)
+# mdl_pen_sig 	<- data.frame(predictor =
+# 								 c(	"(Intercept)", "Disease duration", "Religious affiliation",
+# 									   "Receiving informal \n nursingsupport",
+# 									   "Often end of life \nwishes or thoughts",
+# 									 	"Preferred place \nof care in an \ninstitution",
+# 										"Preferred place \nof care at \nother place"),
+# 								 coef=coefs[sig_predictors,])
 mdl_pen_sig 	<- data.frame(predictor =
-								 c(	"(Intercept)", "Disease duration", "Religious affiliation",
+								 c(	"(Intercept)", "Religious affiliation",
 									   "Receiving informal \n nursingsupport",
-									   "Often end of life \nwishes or thoughts",
 									 	"Preferred place \nof care in an \ninstitution",
 										"Preferred place \nof care at \nother place"),
 								 coef=coefs[sig_predictors,])
+
 write.csv(mdl_pen_sig, file.path(wdir, "results", "table2.ResultsElasticNet_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
-
 
 # ==================================================================================================
 # Create table for stepwise reduced model  - HOMEDEATH
@@ -501,7 +512,8 @@ mdl_step_final 			<- mdl_stepHOMECARE[[1]]
 mdl_step_sig 			<- data.frame(summary(mdl_step_final)$coef)
 sig_predictors 			<- which(mdl_step_sig[,4]<.05 | mdl_step_sig[,4]>.95)
 mdl_step_sig 			<- mdl_step_sig[sig_predictors, ]
-rownames(mdl_step_sig) 	<- c("(Intercept)", "Married", "Preferred place \nof death at \nhome")
+# rownames(mdl_step_sig) 	<- c("(Intercept)", "Married", "Preferred place \nof death at \nhome")
+rownames(mdl_step_sig) 	<- c("(Intercept)", "Preferred place \nof death at \nhome")
 write.csv(mdl_step_sig, file.path(wdir, "results", "table5.ResultsStepWiseReduced_modelHOMEDEATH.v1.0.csv"),
 		  row.names = T) # csv-file may be easily imported into text processing software
 
