@@ -25,7 +25,7 @@
 # 19. Charlson comorbidity index
 # 20. Cohabitation
 # 21. Principal component of disease severity?
-
+# 22. PDQ39-SI
 
 # ========================================================================================================================= #
 # 1. Preferred place of death
@@ -467,3 +467,16 @@ vars_transformed <- apply(df_temp_transformed, 2, var)
 vars_transformed/sum(vars_transformed) # <- just for illustration, the first PC picks up most of the variance of all 5 columns!
 eol_dataframe$disease_severityPC <- c(pca$x[,1])
 
+# ========================================================================================================================= #
+# 22. # Create subscores for PDQ domains:
+
+eol_dataframe <- eol_dataframe %>% rename(PDQ39scoreWRONG = PDQ_score) # rename the (incorrect) addition of row scores
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_mobility = 100/40 * rowSums(select(., PDQ_1:PDQ_10)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_ADL = 100/24 * rowSums(select(., PDQ_11:PDQ_16)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_emotional = 100/24 * rowSums(select(., PDQ_17:PDQ_22)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_stigma = 100/16 * rowSums(select(., PDQ_23:PDQ_26)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_support = 100/12 * rowSums(select(., PDQ_27:PDQ_29)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_cognition = 100/16 * rowSums(select(., PDQ_30:PDQ_33)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_communication = 100/12 * rowSums(select(., PDQ_34:PDQ_36)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_physical = 100/12 * rowSums(select(., PDQ_37:PDQ_39)))
+eol_dataframe <- eol_dataframe %>% mutate(PDQ_score = 1/8 * rowSums(select(., matches("^PDQ_[A-Za-z]"))))

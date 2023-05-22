@@ -1,6 +1,6 @@
 # Code developed by Anna and David Pedrosa
 
-# Version 2.2 # 2023-05-05, removed some predictors that were incorrect, minor changes
+# Version 2.3 # 2023-05-22, changed the way the PDQ39 score is estimated as this was wrong before!
 
 ## First, specify the packages of interest
 packages = c("readxl", "tableone", "ggplot2", "tidyverse", "lemon", "openxlsx", "caret", "corrplot", "gridExtra",
@@ -208,7 +208,7 @@ fig99c <- print_AUC(mdl_penHOMEDEATH[[1]], test_data = test_data, annotation = a
 # ==================================================================================================
 # Bootstrap confidence intervals for the models (HOME DEATH); this takes a while and so results are saved once locally
 
-file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMEDEATH.v2.2.Rdata")
+file2save_bootstrap <- file.path(wdir, "results", "CIdataBootstrapHOMEDEATH.v2.3.Rdata")
 if (!file.exists(file2save_bootstrap)){ # loads data if existent
 	nboot = 1000
 	CI_full <- results_bootstrap(method='glm', data=data_full_glmHOMEDEATH, test_data=test_data,
