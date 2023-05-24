@@ -262,7 +262,8 @@ data2plot <- CI_pen[[2]] %>% select(all_of(idx_CIpen)) %>% select(-"(Intercept)"
 # 							 "Often end of life \nwishes or thoughts",
 # 							 "Preferred place \nof care in an \ninstitution",
 # 						 	"Preferred place \nof care at \nother place")
-colnames(data2plot) <- c(	"Religious affiliation",
+colnames(data2plot) <- c(	"Disease duration",
+							"Religious affiliation",
 							"Receiving informal \n nursingsupport",
 							 "Preferred place \nof care in an \ninstitution",
 						 	"Preferred place \nof care at \nother place")
@@ -297,7 +298,7 @@ sig_predictors 	<- which(coefs != 0)
 # 										"Preferred place \nof care at \nother place"),
 # 								 coef=coefs[sig_predictors,])
 mdl_pen_sig 	<- data.frame(predictor =
-								 c(	"(Intercept)", "Religious affiliation",
+								 c(	"(Intercept)", "Disease duration", "Religious affiliation",
 									   "Receiving informal \n nursingsupport",
 									 	"Preferred place \nof care in an \ninstitution",
 										"Preferred place \nof care at \nother place"),

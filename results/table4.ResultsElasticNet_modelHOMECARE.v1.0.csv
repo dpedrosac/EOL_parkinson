@@ -1,8 +1,8 @@
 "","predictor","coef"
-"1","(Intercept)",0.758594642765418
-"2","Married",0.132250118483306
+"1","(Intercept)",0.736961168708091
+"2","Married",0.0912643627359679
 "3","Preferred place 
 of death at 
-home",0.904753262073267
+home",0.844929526558722
 "4","Charlson comorbidity
- index (including age)",-0.0627793224594336
+ index (including age)",-0.010549047979134
